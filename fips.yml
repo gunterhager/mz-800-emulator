@@ -1,0 +1,11 @@
+#
+# mz-800-emulator
+#
+---
+imports:
+    chips:
+        git: https://github.com/floooh/chips
+    sokol:
+        git: https://github.com/floooh/sokol
+
+
