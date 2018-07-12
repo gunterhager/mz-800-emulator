@@ -28,7 +28,7 @@ fips_end_lib()
 
 fips_begin_app(mz800 windowed)
     fips_vs_warning_level(3)
-    fips_files(mz800.c)
+    fips_files(mz800.c gdg_whid65040_032.h)
     fips_dir(roms)
     fips_generate(FROM mz800-roms.yml TYPE dump SOURCE mz800-roms.c HEADER mz800-roms.h)
     fips_deps(common)
