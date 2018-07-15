@@ -50,13 +50,18 @@ extern "C" {
         /// Palette switch register (for 16 color mode)
         uint8_t plt_sw;
         
-        /// VRAM
-        union {
-            /// 4 planes for 320x200 (I, II, III, IV)
-            uint8_t low_res[4][8000];
-            /// 2 planes for 640x200 (I, III)
-            uint8_t high_res[2][16000];
-        } vram;
+        /// VRAM (one byte for each pixel, we need only 4 bit per pixel)
+        /// Not sure yet if we implement Frames A/B using upper/lower nibble here.
+        uint8_t vram[640 * 200];
+        
+        // Private status properties
+        
+        /// Indicates if frame B should be used
+        bool write_frame_b;
+        /// Mask that indicates which planes to write to.
+        uint8_t write_planes;
+        /// Mask that indicates which planes to reset.
+        uint8_t reset_planes;
         
     } gdg_whid65040_032_t;
     
@@ -91,13 +96,14 @@ extern "C" {
     /* merge 8-bit data bus value into 64-bit pins */
 #define GDG_SET_DATA(p,d) {p=((p&~0xFF0000)|((d&0xFF)<<16));}
     
-    /* initialize a new GDG WHID 65040-032 instance */
     extern void gdg_whid65040_032_init(gdg_whid65040_032_t* gdg);
-    /* reset an existing GDG WHID 65040-032 instance */
     extern void gdg_whid65040_032_reset(gdg_whid65040_032_t* gdg);
-    /* perform an IORQ machine cycle */
     extern uint64_t gdg_whid65040_032_iorq(gdg_whid65040_032_t* gdg, uint64_t pins);
-    
+    extern uint8_t gdg_whid65040_032_mem_rd(gdg_whid65040_032_t* gdg, uint16_t addr);
+    extern void gdg_whid65040_032_mem_wr(gdg_whid65040_032_t* gdg, uint16_t addr, uint8_t data);
+    extern void gdg_whid65040_032_set_dmd(gdg_whid65040_032_t* gdg, uint8_t value);
+    extern void gdg_whid65040_032_set_wf(gdg_whid65040_032_t* gdg, uint8_t value);
+
     /*-- IMPLEMENTATION ----------------------------------------------------------*/
 #ifdef CHIPS_IMPL
 #include <string.h>
@@ -155,7 +161,8 @@ extern "C" {
         else if (pins & GDG_WR) {
             // Write format register
             if (address == 0x00cc) {
-                gdg->wf = Z80_GET_DATA(pins);
+                uint8_t value = Z80_GET_DATA(pins);
+                gdg_whid65040_032_set_wf(gdg, value);
             }
             // Read format register
             else if (address == 0x00cd) {
@@ -163,7 +170,8 @@ extern "C" {
             }
             // Display mode register
             else if (address == 0xce) {
-                gdg->dmd = Z80_GET_DATA(pins) & 0x0f; // Only the lower nibble can be set
+                uint8_t value = Z80_GET_DATA(pins) & 0x0f; // Only the lower nibble can be set
+                gdg_whid65040_032_set_dmd(gdg, value);
             }
             // Scroll offset register 1
             else if (address == 0x01cf) {
@@ -240,18 +248,72 @@ extern "C" {
     void gdg_whid65040_032_mem_wr(gdg_whid65040_032_t* gdg, uint16_t addr, uint8_t data) {
         uint8_t write_mode = gdg->dmd >> 5;
         
+        // Check write mode
+        switch (write_mode) {
+            case 0: // 000 Single write
+                break;
+                
+            case 1: // 001 XOR
+                break;
+                
+            case 2: // 010 OR
+                break;
+                
+            case 3: // 011 Reset
+                break;
+                
+            case 4: // 10x Replace
+            case 5:
+                break;
+                
+            case 6: // 11x PSET
+            case 7:
+                break;
+        }
+    }
+    
+    void gdg_whid65040_032_set_dmd(gdg_whid65040_032_t* gdg, uint8_t value) {
+        gdg->dmd = value;
+    }
+    
+    void gdg_whid65040_032_set_wf(gdg_whid65040_032_t* gdg, uint8_t value) {
+        gdg->wf = value;
+        
         // MZ-700 mode
-        if ((gdg->dmd & 0x0f) == 0x08) {
+        if ((value & 0x0f) == 0x08) {
             // TODO: not implemented yet
+            return;
         }
-        // 640x200 mode
-        else if (gdg->dmd & 0x04) {
-            
+        
+        if (value & 0x02) { // 640x200 4 colors, 320x200 16 colors
+            gdg->write_frame_b = false;
+            if (gdg->dmd & 0x04) { // 640x200 mode
+                // Planes I, III can be selected
+                // Plane III is shifted down from bit 2 to bit 1 so that decoding the color bits is easier later on
+                gdg->write_planes = (value & 0x01) | ((value >> 1) & 0x02);
+                gdg->reset_planes = ~0x03; // Planes II, IV will be cleared
+            } else { // 320x200 mode
+                // Planes I, II, III, IV can be selected
+                gdg->write_planes = value & 0x0f;
+                gdg->reset_planes = ~0x0f; // I don't think that's really necessary since these bits will always be 0
+            }
+        } else {
+            gdg->write_frame_b = value & 0x10;
+            gdg->write_planes = gdg->write_frame_b ? (value >> 2) : value;
+            if (value & 0x80) { // Replace or PSET
+                if (gdg->dmd & 0x04) { // 640x200 mode
+                    gdg->write_planes &= 0x01;
+                    gdg->reset_planes = ~0x01;
+                } else { // 320x200 mode
+                    gdg->write_planes &= 0x03;
+                    gdg->reset_planes = ~0x03;
+                }
+            } else { // Single Write, XOR, OR, Reset
+                gdg->write_planes &= 0x03;
+                gdg->reset_planes = ~0x03;
+            }
         }
-        // 320x200 mode
-        else {
-            
-        }
+
     }
     
 #endif /* CHIPS_IMPL */
