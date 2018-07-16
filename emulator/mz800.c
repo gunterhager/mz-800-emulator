@@ -47,12 +47,17 @@ typedef struct {
     // Memory
     mem_t mem;
     
+    
+    
     // ROM
     uint8_t rom1[0x1000];  // 0x0000-0x0fff
     uint8_t cgrom[0x1000]; // 0x1000-0x1fff
     uint8_t rom2[0x2000];  // 0xe000-0xffff
+    
     // VRAM
-    uint8_t vram[0x4000];  // 0x8000-0xbfff
+    // 0x8000-0xbfff VRAM not mapped here, emulated by the GDG
+    bool vram_banked_in;
+    
     // RAM
     uint8_t dram0[0x1000]; // 0x0000-0x0fff
     uint8_t dram1[0x1000]; // 0x1000-0x1fff
@@ -84,29 +89,6 @@ const uint32_t mz800_mem_banks[9] = {
     O(0xe4), // | ROM    | CGROM  | VRAM   | ROM    |
     O(0xe5), // | x      | x      | x      | PROHIB | // Prohibited
     O(0xe6)  // | x      | x      | x      | RETURN | // Return to previous state
-};
-
-/// Colors - the MZ-800 has 16 fixed colors.
-/// Color codes on the MZ-800 are IGRB (Intensity, Green, Red, Blue)
-const uint32_t mz800_colors[16] = {
-    // Intensity low
-    0x000000, // 0000 black
-    0x000030, // 0001 blue
-    0x300000, // 0010 red
-    0x300030, // 0011 purple
-    0x003000, // 0100 green
-    0x003030, // 0101 cyan
-    0x303000, // 0110 yellow
-    0x303030, // 0111 white
-    // Intensity high
-    0x151515, // 1000 gray
-    0x00003f, // 1001 light blue
-    0x3f0000, // 1010 light red
-    0x3f003f, // 1011 light purple
-    0x003f00, // 1100 light green
-    0x003f3f, // 1101 light cyan
-    0x3f3f00, // 1110 light yellow
-    0x3f3f3f  // 1111 light white
 };
 
 uint32_t overrun_ticks;
@@ -148,6 +130,12 @@ sapp_desc sokol_main(int argc, char* argv[]) {
 /* one-time application init */
 void app_init() {
     gfx_init(MZ800_DISP_WIDTH, MZ800_DISP_HEIGHT);
+    
+//    // Clear screen
+//    for (uint32_t index = 0; index < 80; index++) {
+//        rgba8_buffer[index] = 0x00003000;
+//    }
+
     mz800_init();
     last_time_stamp = stm_now();
 }
@@ -185,7 +173,7 @@ void mz800_init(void) {
     mz800_init_memory_mapping();
     z80_init(&mz800.cpu, mz800_cpu_tick);
     
-    /* CPU start address */
+    // CPU start address
     mz800.cpu.state.PC = 0x2000;
 }
 
@@ -197,7 +185,8 @@ void mz800_init_memory_mapping(void) {
     mem_map_rom(&mz800.mem, 0, 0x0000, 0x1000, mz800.rom1);
     mem_map_ram(&mz800.mem, 0, 0x1000, 0x1000, mz800.cgrom);
     mem_map_ram(&mz800.mem, 0, 0x2000, 0x6000, dump_mz800_dram2); // 'load' custom program
-    mem_map_ram(&mz800.mem, 0, 0x8000, 0x4000, mz800.vram);
+    mz800.vram_banked_in = true;
+    mem_map_ram(&mz800.mem, 0, 0x8000, 0x4000, mz800.dram3); // VRAM isn't handled by regular memory mapping
     mem_map_ram(&mz800.mem, 0, 0xc000, 0x2000, mz800.dram4);
     mem_map_rom(&mz800.mem, 0, 0xe000, 0x2000, mz800.rom2);
 }
@@ -211,10 +200,10 @@ void mz800_update_memory_mapping(uint64_t pins) {
     uint64_t pins_to_check = pins & (Z80_RD | Z80_WR | Z80_IORQ | 0xff);
     if (pins_to_check == mz800_mem_banks[0]) {
         mem_map_rom(&mz800.mem, 0, 0x1000, 0x1000, mz800.cgrom);
-        mem_map_ram(&mz800.mem, 0, 0x8000, 0x4000, mz800.vram);
+        mz800.vram_banked_in = true;
     } else if (pins_to_check == mz800_mem_banks[1]) {
         mem_map_ram(&mz800.mem, 0, 0x1000, 0x1000, mz800.dram1);
-        mem_map_ram(&mz800.mem, 0, 0x8000, 0x4000, mz800.dram3);
+        mz800.vram_banked_in = false;
     } else if (pins_to_check == mz800_mem_banks[2]) {
         mem_map_ram(&mz800.mem, 0, 0x0000, 0x1000, mz800.dram0);
         mem_map_ram(&mz800.mem, 0, 0x1000, 0x1000, mz800.dram1);
@@ -227,7 +216,7 @@ void mz800_update_memory_mapping(uint64_t pins) {
     } else if (pins_to_check == mz800_mem_banks[6]) {
         mem_map_rom(&mz800.mem, 0, 0x0000, 0x1000, mz800.rom1);
         mem_map_rom(&mz800.mem, 0, 0x1000, 0x1000, mz800.cgrom);
-        mem_map_ram(&mz800.mem, 0, 0x8000, 0x4000, mz800.vram);
+        mz800.vram_banked_in = true;
         mem_map_rom(&mz800.mem, 0, 0xe000, 0x2000, mz800.rom2);
     } else if (pins_to_check == mz800_mem_banks[7]) {
         // PROHIBIT not implemented
@@ -244,11 +233,21 @@ uint64_t mz800_cpu_tick(int num_ticks, uint64_t pins) {
     // Memory request
     if (pins & Z80_MREQ) {
         const uint16_t addr = Z80_GET_ADDR(pins);
-        if (pins & Z80_RD) {
-            Z80_SET_DATA(out_pins, mem_rd(&mz800.mem, addr));
-        }
-        else if (pins & Z80_WR) {
-            mem_wr(&mz800.mem, addr, Z80_GET_DATA(pins));
+        if (mz800.vram_banked_in && ((addr & 0xc000) == 0x8000)) { // Address range of VRAM
+            uint16_t vram_addr = addr - 0x8000;
+            if (pins & Z80_RD) {
+                Z80_SET_DATA(out_pins, gdg_whid65040_032_mem_rd(&mz800.gdg, vram_addr));
+            }
+            else if (pins & Z80_WR) {
+                gdg_whid65040_032_mem_wr(&mz800.gdg, vram_addr, Z80_GET_DATA(pins), rgba8_buffer);
+            }
+        } else {
+            if (pins & Z80_RD) {
+                Z80_SET_DATA(out_pins, mem_rd(&mz800.mem, addr));
+            }
+            else if (pins & Z80_WR) {
+                mem_wr(&mz800.mem, addr, Z80_GET_DATA(pins));
+            }
         }
     }
     

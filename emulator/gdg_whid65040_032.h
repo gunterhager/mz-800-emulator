@@ -96,11 +96,35 @@ extern "C" {
     /* merge 8-bit data bus value into 64-bit pins */
 #define GDG_SET_DATA(p,d) {p=((p&~0xFF0000)|((d&0xFF)<<16));}
     
+    /// Colors - the MZ-800 has 16 fixed colors.
+    /// Color codes on the MZ-800 are IGRB (Intensity, Green, Red, Blue).
+    /// Values here are in RGBA8.
+    const uint32_t mz800_colors[16] = {
+        // Intensity low
+        0x00000000, // 0000 black
+        0x00003000, // 0001 blue
+        0x30000000, // 0010 red
+        0x30003000, // 0011 purple
+        0x00300000, // 0100 green
+        0x00303000, // 0101 cyan
+        0x30300000, // 0110 yellow
+        0x30303000, // 0111 white
+        // Intensity high
+        0x15151500, // 1000 gray
+        0x00003f00, // 1001 light blue
+        0x3f000000, // 1010 light red
+        0x3f003f00, // 1011 light purple
+        0x003f0000, // 1100 light green
+        0x003f3f00, // 1101 light cyan
+        0x3f3f0000, // 1110 light yellow
+        0x3f3f3f00  // 1111 light white
+    };
+    
     extern void gdg_whid65040_032_init(gdg_whid65040_032_t* gdg);
     extern void gdg_whid65040_032_reset(gdg_whid65040_032_t* gdg);
     extern uint64_t gdg_whid65040_032_iorq(gdg_whid65040_032_t* gdg, uint64_t pins);
     extern uint8_t gdg_whid65040_032_mem_rd(gdg_whid65040_032_t* gdg, uint16_t addr);
-    extern void gdg_whid65040_032_mem_wr(gdg_whid65040_032_t* gdg, uint16_t addr, uint8_t data);
+    extern void gdg_whid65040_032_mem_wr(gdg_whid65040_032_t* gdg, uint16_t addr, uint8_t data, uint32_t *rgba8_buffer);
     extern void gdg_whid65040_032_set_dmd(gdg_whid65040_032_t* gdg, uint8_t value);
     extern void gdg_whid65040_032_set_wf(gdg_whid65040_032_t* gdg, uint8_t value);
 
@@ -240,16 +264,18 @@ extern "C" {
     /**
      Write a byte to VRAM. What gets actually written depends on the
      write format register of the GDG.
+     Pixel data will also be written to the RGBA8 buffer.
 
      @param gdg Pointer to GDG instance.
      @param addr Address in the VRAM to write to. VRAM addresses start from 0x0000 here.
      @param data Byte to write to VRAM.
+     @param rgba8_buffer RGBA8 buffer to write to.
      */
-    void gdg_whid65040_032_mem_wr(gdg_whid65040_032_t* gdg, uint16_t addr, uint8_t data) {
+    void gdg_whid65040_032_mem_wr(gdg_whid65040_032_t* gdg, uint16_t addr, uint8_t data, uint32_t *rgba8_buffer) {
         uint8_t write_mode = gdg->dmd >> 5;
-        uint16_t *plane_ptr = addr;
+        uint8_t *plane_ptr = gdg->vram + addr;
         
-        // Check write mode
+        // Write into VRAM
         switch (write_mode) {
             case 0: // 000 Single write
                 for (uint8_t bit = 0; bit < 8; bit++, plane_ptr++, data >>= 1) {
@@ -305,6 +331,33 @@ extern "C" {
                 }
                 break;
         }
+        
+        // Decode VRAM into RGB8 buffer
+        
+        // Setup
+        plane_ptr = gdg->vram + addr;
+        uint32_t *rgba8_ptr = rgba8_buffer + addr;
+        
+        for (uint8_t bit = 0; bit < 8; bit++, plane_ptr++, rgba8_ptr++) {
+            // Get value from VRAM
+            uint8_t value = *plane_ptr;
+            
+            // Look up in palette
+            uint8_t mz_color;
+            if (gdg->dmd == 0x02) { // Special lookup for 320x200, 16 colors
+                // TODO: implement
+                mz_color = 0;
+            } else {
+                mz_color = gdg->plt[value];
+            }
+            
+            // Look up final color
+            uint32_t color = mz800_colors[mz_color];
+            
+            // Write to RGBA8 buffer
+            *rgba8_ptr = color;
+        }
+        
     }
     
     void gdg_whid65040_032_set_dmd(gdg_whid65040_032_t* gdg, uint8_t value) {
