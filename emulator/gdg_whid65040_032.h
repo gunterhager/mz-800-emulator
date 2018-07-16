@@ -247,27 +247,62 @@ extern "C" {
      */
     void gdg_whid65040_032_mem_wr(gdg_whid65040_032_t* gdg, uint16_t addr, uint8_t data) {
         uint8_t write_mode = gdg->dmd >> 5;
+        uint16_t *plane_ptr = addr;
         
         // Check write mode
         switch (write_mode) {
             case 0: // 000 Single write
+                for (uint8_t bit = 0; bit < 8; bit++, plane_ptr++, data >>= 1) {
+                    if (data & 0x01) {
+                        *plane_ptr |= gdg->write_planes;
+                    } else {
+                        *plane_ptr &= ~gdg->reset_planes;
+                    }
+                }
                 break;
                 
             case 1: // 001 XOR
+                for (uint8_t bit = 0; bit < 8; bit++, plane_ptr++, data >>= 1) {
+                    if (data & 0x01) {
+                        *plane_ptr ^= gdg->write_planes;
+                    }
+                }
                 break;
                 
             case 2: // 010 OR
+                for (uint8_t bit = 0; bit < 8; bit++, plane_ptr++, data >>= 1) {
+                    if (data & 0x01) {
+                        *plane_ptr |= gdg->write_planes;
+                    }
+                }
                 break;
                 
             case 3: // 011 Reset
+                for (uint8_t bit = 0; bit < 8; bit++, plane_ptr++, data >>= 1) {
+                    if (data & 0x01) {
+                        *plane_ptr &= ~gdg->reset_planes;
+                    }
+                }
                 break;
                 
             case 4: // 10x Replace
             case 5:
+                for (uint8_t bit = 0; bit < 8; bit++, plane_ptr++, data >>= 1) {
+                    if (data & 0x01) {
+                        *plane_ptr = gdg->write_planes;
+                    } else {
+                        *plane_ptr = 0;
+                    }
+                }
                 break;
                 
             case 6: // 11x PSET
             case 7:
+                for (uint8_t bit = 0; bit < 8; bit++, plane_ptr++, data >>= 1) {
+                    if (data & 0x01) {
+                        *plane_ptr = gdg->write_planes;
+                    }
+                }
                 break;
         }
     }
