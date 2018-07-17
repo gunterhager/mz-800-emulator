@@ -131,10 +131,10 @@ sapp_desc sokol_main(int argc, char* argv[]) {
 void app_init() {
     gfx_init(MZ800_DISP_WIDTH, MZ800_DISP_HEIGHT);
     
-//    // Clear screen
-//    for (uint32_t index = 0; index < 80; index++) {
-//        rgba8_buffer[index] = 0x00003000;
-//    }
+    // Clear screen
+    for (uint32_t index = 0; index < MZ800_DISP_WIDTH * MZ800_DISP_HEIGHT; index++) {
+        rgba8_buffer[index] = 0xffff0000;
+    }
 
     mz800_init();
     last_time_stamp = stm_now();
@@ -175,6 +175,8 @@ void mz800_init(void) {
     
     // CPU start address
     mz800.cpu.state.PC = 0x2000;
+    
+    gdg_whid65040_032_init(&mz800.gdg);
 }
 
 /**

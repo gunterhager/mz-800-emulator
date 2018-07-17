@@ -96,28 +96,34 @@ extern "C" {
     /* merge 8-bit data bus value into 64-bit pins */
 #define GDG_SET_DATA(p,d) {p=((p&~0xFF0000)|((d&0xFF)<<16));}
     
+    // Color definition helpers
+#define CI0 (0x30)
+#define CI1 (0x3f)
+#define CI(i) ((i) ? CI1 : CI0)
+#define COLOR_IGRB_TO_ABGR(i, g, r, b) (0xff000000 | (((b) * CI(i)) << 16) | (((g) * CI(i)) << 8) | ((r) * CI(i)))
+    
     /// Colors - the MZ-800 has 16 fixed colors.
     /// Color codes on the MZ-800 are IGRB (Intensity, Green, Red, Blue).
-    /// Values here are in RGBA8.
+    /// NOTE: the colors are encoded in ABGR.
     const uint32_t mz800_colors[16] = {
         // Intensity low
-        0x00000000, // 0000 black
-        0x00003000, // 0001 blue
-        0x30000000, // 0010 red
-        0x30003000, // 0011 purple
-        0x00300000, // 0100 green
-        0x00303000, // 0101 cyan
-        0x30300000, // 0110 yellow
-        0x30303000, // 0111 white
+        COLOR_IGRB_TO_ABGR(0, 0, 0, 0), // 0000 black
+        COLOR_IGRB_TO_ABGR(0, 0, 0, 1), // 0001 blue
+        COLOR_IGRB_TO_ABGR(0, 0, 1, 0), // 0010 red
+        COLOR_IGRB_TO_ABGR(0, 0, 1, 1), // 0011 purple
+        COLOR_IGRB_TO_ABGR(0, 1, 0, 0), // 0100 green
+        COLOR_IGRB_TO_ABGR(0, 1, 0, 1), // 0101 cyan
+        COLOR_IGRB_TO_ABGR(0, 1, 1, 0), // 0110 yellow
+        COLOR_IGRB_TO_ABGR(0, 1, 1, 1), // 0111 white
         // Intensity high
-        0x15151500, // 1000 gray
-        0x00003f00, // 1001 light blue
-        0x3f000000, // 1010 light red
-        0x3f003f00, // 1011 light purple
-        0x003f0000, // 1100 light green
-        0x003f3f00, // 1101 light cyan
-        0x3f3f0000, // 1110 light yellow
-        0x3f3f3f00  // 1111 light white
+        COLOR_IGRB_TO_ABGR(1, 0, 0, 0), // 1000 gray
+        COLOR_IGRB_TO_ABGR(1, 0, 0, 1), // 1001 light blue
+        COLOR_IGRB_TO_ABGR(1, 0, 1, 0), // 1010 light red
+        COLOR_IGRB_TO_ABGR(1, 0, 1, 1), // 1011 light purple
+        COLOR_IGRB_TO_ABGR(1, 1, 0, 0), // 1100 light green
+        COLOR_IGRB_TO_ABGR(1, 1, 0, 1), // 1101 light cyan
+        COLOR_IGRB_TO_ABGR(1, 1, 1, 0), // 1110 light yellow
+        COLOR_IGRB_TO_ABGR(1, 1, 1, 1)  // 1111 light white
     };
     
     extern void gdg_whid65040_032_init(gdg_whid65040_032_t* gdg);
@@ -147,6 +153,9 @@ extern "C" {
      */
     void gdg_whid65040_032_init(gdg_whid65040_032_t* gdg) {
         CHIPS_ASSERT(gdg);
+        
+        uint32_t test = COLOR_IGRB_TO_ABGR(0, 0, 0, 1);
+        
         gdg_whid65040_032_reset(gdg);
     }
     
