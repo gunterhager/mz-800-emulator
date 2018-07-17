@@ -130,7 +130,7 @@ extern "C" {
     extern void gdg_whid65040_032_reset(gdg_whid65040_032_t* gdg);
     extern uint64_t gdg_whid65040_032_iorq(gdg_whid65040_032_t* gdg, uint64_t pins);
     extern uint8_t gdg_whid65040_032_mem_rd(gdg_whid65040_032_t* gdg, uint16_t addr);
-    extern void gdg_whid65040_032_mem_wr(gdg_whid65040_032_t* gdg, uint16_t addr, uint8_t data, uint32_t *rgba8_buffer);
+    extern void gdg_whid65040_032_mem_wr(gdg_whid65040_032_t* gdg, uint16_t addr, uint8_t data, uint32_t rgba8_buffer[]);
     extern void gdg_whid65040_032_set_dmd(gdg_whid65040_032_t* gdg, uint8_t value);
     extern void gdg_whid65040_032_set_wf(gdg_whid65040_032_t* gdg, uint8_t value);
 
@@ -153,9 +153,6 @@ extern "C" {
      */
     void gdg_whid65040_032_init(gdg_whid65040_032_t* gdg) {
         CHIPS_ASSERT(gdg);
-        
-        uint32_t test = COLOR_IGRB_TO_ABGR(0, 0, 0, 1);
-        
         gdg_whid65040_032_reset(gdg);
     }
     
@@ -280,7 +277,7 @@ extern "C" {
      @param data Byte to write to VRAM.
      @param rgba8_buffer RGBA8 buffer to write to.
      */
-    void gdg_whid65040_032_mem_wr(gdg_whid65040_032_t* gdg, uint16_t addr, uint8_t data, uint32_t *rgba8_buffer) {
+    void gdg_whid65040_032_mem_wr(gdg_whid65040_032_t* gdg, uint16_t addr, uint8_t data, uint32_t rgba8_buffer[]) {
         uint8_t write_mode = gdg->dmd >> 5;
         uint8_t *plane_ptr = gdg->vram + addr;
         
@@ -345,9 +342,9 @@ extern "C" {
         
         // Setup
         plane_ptr = gdg->vram + addr;
-        uint32_t *rgba8_ptr = rgba8_buffer + addr;
+        uint32_t index = addr * 8; // Pixel index in rgba8_buffer
         
-        for (uint8_t bit = 0; bit < 8; bit++, plane_ptr++, rgba8_ptr++) {
+        for (uint8_t bit = 0; bit < 8; bit++, plane_ptr++, index++) {
             // Get value from VRAM
             uint8_t value = *plane_ptr;
             
@@ -364,7 +361,7 @@ extern "C" {
             uint32_t color = mz800_colors[mz_color];
             
             // Write to RGBA8 buffer
-            *rgba8_ptr = color;
+            rgba8_buffer[index] = color;
         }
         
     }
