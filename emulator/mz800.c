@@ -185,7 +185,7 @@ void mz800_init(void) {
 void mz800_init_memory_mapping(void) {
     // According to SHARP Service Manual
     mem_map_rom(&mz800.mem, 0, 0x0000, 0x1000, mz800.rom1);
-    mem_map_ram(&mz800.mem, 0, 0x1000, 0x1000, mz800.cgrom);
+    mem_map_ram(&mz800.mem, 0, 0x1000, 0x1000, dump_mz800_cgrom); // Character ROM
     mem_map_ram(&mz800.mem, 0, 0x2000, 0x6000, dump_mz800_dram2); // 'load' custom program
     mz800.vram_banked_in = true;
     mem_map_ram(&mz800.mem, 0, 0x8000, 0x4000, mz800.dram3); // VRAM isn't handled by regular memory mapping
@@ -217,7 +217,7 @@ void mz800_update_memory_mapping(uint64_t pins) {
         mem_map_rom(&mz800.mem, 0, 0xe000, 0x2000, mz800.rom2);
     } else if (pins_to_check == mz800_mem_banks[6]) {
         mem_map_rom(&mz800.mem, 0, 0x0000, 0x1000, mz800.rom1);
-        mem_map_rom(&mz800.mem, 0, 0x1000, 0x1000, mz800.cgrom);
+        mem_map_rom(&mz800.mem, 0, 0x1000, 0x1000, dump_mz800_cgrom);
         mz800.vram_banked_in = true;
         mem_map_rom(&mz800.mem, 0, 0xe000, 0x2000, mz800.rom2);
     } else if (pins_to_check == mz800_mem_banks[7]) {
@@ -292,12 +292,12 @@ uint64_t mz800_cpu_iorq(uint64_t pins) {
         // so we do the bank switch directly here.
         mz800_update_memory_mapping(pins);
     }
-    // Joystick
-    else if ((pins & Z80_WR) || (IN_RANGE(address, 0xf0, 0xf1))) {
+    // Joystick (read only)
+    else if ((pins & Z80_RD) && (IN_RANGE(address, 0xf0, 0xf1))) {
         // TODO: not implemented
     }
-    // GDG WHID 65040-032, Palette register
-    else if ((pins & Z80_WR) || (address == 0xf0)) {
+    // GDG WHID 65040-032, Palette register (write only)
+    else if ((pins & Z80_WR) && (address == 0xf0)) {
         gdg_whid65040_032_iorq(&mz800.gdg, pins);
     }
     // PSG SN 76489 AN, sound generator

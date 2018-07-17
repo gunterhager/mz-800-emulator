@@ -97,8 +97,8 @@ extern "C" {
 #define GDG_SET_DATA(p,d) {p=((p&~0xFF0000)|((d&0xFF)<<16));}
     
     // Color definition helpers
-#define CI0 (0x30)
-#define CI1 (0x3f)
+#define CI0 (0x78)
+#define CI1 (0xdf)
 #define CI(i) ((i) ? CI1 : CI0)
 #define COLOR_IGRB_TO_ABGR(i, g, r, b) (0xff000000 | (((b) * CI(i)) << 16) | (((g) * CI(i)) << 8) | ((r) * CI(i)))
     
@@ -174,11 +174,12 @@ extern "C" {
         }
         
         uint16_t address = Z80_GET_ADDR(pins);
+        uint16_t low_address = address & 0x00ff;
         
         // Read
         if (pins & GDG_RD) {
             // Display status register
-            if (address == 0x00ce) {
+            if (low_address == 0x00ce) {
                 Z80_SET_DATA(outpins, gdg->status);
             }
             // DEBUG
@@ -190,16 +191,16 @@ extern "C" {
         // Write
         else if (pins & GDG_WR) {
             // Write format register
-            if (address == 0x00cc) {
+            if (low_address == 0x00cc) {
                 uint8_t value = Z80_GET_DATA(pins);
                 gdg_whid65040_032_set_wf(gdg, value);
             }
             // Read format register
-            else if (address == 0x00cd) {
+            else if (low_address == 0x00cd) {
                 gdg->rf = Z80_GET_DATA(pins) & 0x9f; // Bits 5, 6 can't be set
             }
             // Display mode register
-            else if (address == 0xce) {
+            else if (low_address == 0x00ce) {
                 uint8_t value = Z80_GET_DATA(pins) & 0x0f; // Only the lower nibble can be set
                 gdg_whid65040_032_set_dmd(gdg, value);
             }
@@ -232,7 +233,7 @@ extern "C" {
                 gdg->cksw = Z80_GET_DATA(pins) & 0x80; // Only bit 7 can be set
             }
             // Palette register
-            else if (address == 0x00f0) {
+            else if (low_address == 0x00f0) {
                 uint8_t value = Z80_GET_DATA(pins) & 0x7f; // Bit 7 can't be set
                 
                 // Set plt_sw register
@@ -278,7 +279,7 @@ extern "C" {
      @param rgba8_buffer RGBA8 buffer to write to.
      */
     void gdg_whid65040_032_mem_wr(gdg_whid65040_032_t* gdg, uint16_t addr, uint8_t data, uint32_t rgba8_buffer[]) {
-        uint8_t write_mode = gdg->dmd >> 5;
+        uint8_t write_mode = gdg->wf >> 5;
         uint8_t *plane_ptr = gdg->vram + addr;
         
         // Write into VRAM
@@ -342,7 +343,8 @@ extern "C" {
         
         // Setup
         plane_ptr = gdg->vram + addr;
-        uint32_t index = addr * 8; // Pixel index in rgba8_buffer
+        bool hires = gdg->dmd & 0x04; // 640x200 if set
+        uint32_t index = addr * 8 * (hires ? 1 : 2); // Pixel index in rgba8_buffer, in lores we write 2 pixels for each lores pixel
         
         for (uint8_t bit = 0; bit < 8; bit++, plane_ptr++, index++) {
             // Get value from VRAM
@@ -361,6 +363,10 @@ extern "C" {
             uint32_t color = mz800_colors[mz_color];
             
             // Write to RGBA8 buffer
+            if (!hires) {
+                // We need to write 2 pixels for each lores pixel
+                rgba8_buffer[index++] = color;
+            }
             rgba8_buffer[index] = color;
         }
         
@@ -379,7 +385,7 @@ extern "C" {
             return;
         }
         
-        if (value & 0x02) { // 640x200 4 colors, 320x200 16 colors
+        if (gdg->dmd & 0x02) { // 640x200 4 colors, 320x200 16 colors
             gdg->write_frame_b = false;
             if (gdg->dmd & 0x04) { // 640x200 mode
                 // Planes I, III can be selected
