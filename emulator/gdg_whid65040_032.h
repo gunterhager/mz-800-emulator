@@ -356,9 +356,12 @@ extern "C" {
             // Look up in palette
             uint8_t mz_color;
             if (gdg->dmd == 0x02) { // Special lookup for 320x200, 16 colors
-                // TODO: implement
-                mz_color = 0;
-            } else {
+                if (((value >> 2) & 0x03) == gdg->plt_sw) { // If plane III and IV match palette switch
+                    mz_color = gdg->plt[value]; // Take color from palette
+                } else {
+                    mz_color = value; // Take color directly from plane data
+                }
+            } else { // All other modes take color from palette
                 mz_color = gdg->plt[value];
             }
             
