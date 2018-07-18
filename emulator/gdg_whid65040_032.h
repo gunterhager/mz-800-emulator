@@ -280,7 +280,8 @@ extern "C" {
      */
     void gdg_whid65040_032_mem_wr(gdg_whid65040_032_t* gdg, uint16_t addr, uint8_t data, uint32_t rgba8_buffer[]) {
         uint8_t write_mode = gdg->wf >> 5;
-        uint8_t *plane_ptr = gdg->vram + addr;
+        // TODO: Implement writing to frame B
+        uint8_t *plane_ptr = gdg->vram + addr * 8;
         
         // Write into VRAM
         switch (write_mode) {
@@ -342,10 +343,12 @@ extern "C" {
         // Decode VRAM into RGB8 buffer
         
         // Setup
-        plane_ptr = gdg->vram + addr;
+        plane_ptr = gdg->vram + addr * 8;
         bool hires = gdg->dmd & 0x04; // 640x200 if set
         uint32_t index = addr * 8 * (hires ? 1 : 2); // Pixel index in rgba8_buffer, in lores we write 2 pixels for each lores pixel
         
+        // Iterate over 8 bits of a single VRAM byte
+        // We need to set one byte of RGBA8 buffer for each VRAM bit (2 bytes in 320x200 mode)
         for (uint8_t bit = 0; bit < 8; bit++, plane_ptr++, index++) {
             // Get value from VRAM
             uint8_t value = *plane_ptr;
