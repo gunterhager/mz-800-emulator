@@ -1,3 +1,5 @@
+![MZ-800](misc/cgrom_dump.png)
+
 # mz-800-emulator
 
 SHARP MZ-800 Emulator using Andre Weissflog's https://github.com/floooh/chips emulator infrastructure.
