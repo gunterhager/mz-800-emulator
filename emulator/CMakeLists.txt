@@ -1,3 +1,5 @@
+find_package(XCTest REQUIRED)
+
 # select the sokol-gfx backend depending on platform
 if(FIPS_EMSCRIPTEN OR FIPS_RASPBERRYPI OR FIPS_ANDROID)
     add_definitions(-DSOKOL_GLES2)
@@ -37,9 +39,10 @@ fips_begin_lib(common)
     endif()
 fips_end_lib()
 
-fips_begin_app(mz800 windowed)
+fips_begin_app(MZ-800-Emulator windowed)
     fips_vs_warning_level(3)
-    fips_files(mz800.c gdg_whid65040_032.h)
+    fips_files(mz800.c)
+    fips_files(gdg_whid65040_032.h)
     if (FIPS_IOS)
         fips_files(ios-info.plist)
     endif()
@@ -47,3 +50,13 @@ fips_begin_app(mz800 windowed)
     fips_generate(FROM mz800-roms.yml TYPE dump SOURCE mz800-roms.c HEADER mz800-roms.h)
     fips_deps(common)
 fips_end_app()
+
+# add unit tests using XCTest
+if (FIPS_OSX)
+    xctest_add_bundle(MZ-800-Emulator-Tests MZ-800-Emulator XCTests/GDGTests.m)
+    xctest_add_test(XCTest.MZ-800-Emulator MZ-800-Emulator-Tests)
+
+#fips_ide_group(examples)
+#fips_add_subdirectory(examples)
+
+endif()

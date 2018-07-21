@@ -13,8 +13,12 @@
 #include "chips/crt.h"
 #include "chips/kbd.h"
 #include "chips/mem.h"
+
+#include "mzf.h"
 #include "gdg_whid65040_032.h"
 #include "roms/mz800-roms.h"
+#include "mz800.h"
+
 #include "common/gfx.h"
 #include "common/fs.h"
 #include "common/sound.h"
@@ -28,50 +32,6 @@
 #define MZ800_DISP_WIDTH (640)
 #define MZ800_DISP_HEIGHT (200)
 
-typedef struct {
-    
-    // CPU Z80A
-    z80_t cpu;
-    
-    // PPI i8255, keyboard and cassette driver
-    // CTC i8253, programmable counter/timer
-    // PIO Z80 PIO, parallel I/O unit
-    // PSG SN 76489 AN, sound generator
-    
-    // GDG WHID 65040-032, CRT controller
-    gdg_whid65040_032_t gdg;
-    
-    // CRT
-    crt_t crt;
-    
-    // Keyboard
-    kbd_t kbd;
-    
-    // Memory
-    mem_t mem;
-    
-    
-    
-    // ROM
-    uint8_t rom1[0x1000];  // 0x0000-0x0fff
-    uint8_t cgrom[0x1000]; // 0x1000-0x1fff
-    uint8_t rom2[0x2000];  // 0xe000-0xffff
-    
-    // VRAM
-    // 0x8000-0xbfff VRAM not mapped here, emulated by the GDG
-    bool vram_banked_in;
-    
-    // RAM
-    uint8_t dram0[0x1000]; // 0x0000-0x0fff
-    uint8_t dram1[0x1000]; // 0x1000-0x1fff
-    uint8_t dram2[0x6000]; // 0x2000-0x7fff
-    uint8_t dram3[0x4000]; // 0x8000-0xbfff
-    uint8_t dram4[0x2000]; // 0xc000-0xdfff
-    uint8_t dram5[0x2000]; // 0xe000-0xffff
-
-
-
-} mz800_t;
 mz800_t mz800;
 
 #define I(a) ((a) | Z80_RD | Z80_IORQ)
@@ -104,7 +64,6 @@ void mz800_init_memory_mapping(void);
 void mz800_update_memory_mapping(uint64_t pins);
 uint64_t mz800_cpu_tick(int num_ticks, uint64_t pins);
 uint64_t mz800_cpu_iorq(uint64_t pins);
-void mz800_decode_vram(void);
 
 /* sokol-app entry, configure application callbacks and window */
 void app_init(void);
@@ -140,14 +99,8 @@ void app_init() {
     gfx_init(MZ800_DISP_WIDTH, MZ800_DISP_HEIGHT, 1, 2);
     sound_init();
     clock_init(MZ800_FREQ);
-    
-    // Clear screen (DEBUG)
-    for (uint32_t index = 0; index < MZ800_DISP_WIDTH * MZ800_DISP_HEIGHT; index++) {
-        rgba8_buffer[index] = 0xffff0000;
-    }
-
     mz800_init();
-}
+ }
 
 /* per frame stuff, tick the emulator, handle input, decode and draw emulator display */
 void app_frame() {
@@ -155,6 +108,12 @@ void app_frame() {
     // TODO: Keyboard update
     // kbd_update(&mz800.kbd);
     gfx_draw();
+    
+    /* load MZF file? */
+    if (fs_ptr() && clock_frame_count() > 20) {
+        mzf_load(fs_ptr(), fs_size(), &mz800.cpu, mz800.dram0);
+        fs_free();
+    }
 }
 
 /* keyboard input handling */
@@ -176,7 +135,7 @@ void mz800_init(void) {
     gdg_whid65040_032_init(&mz800.gdg);
 
     // CPU start address
-    mz800.cpu.state.PC = 0x2000;
+    mz800.cpu.state.PC = 0x0000;
 }
 
 /**
@@ -186,7 +145,7 @@ void mz800_init_memory_mapping(void) {
     // According to SHARP Service Manual
     mem_map_rom(&mz800.mem, 0, 0x0000, 0x1000, mz800.rom1);
     mem_map_ram(&mz800.mem, 0, 0x1000, 0x1000, dump_mz800_cgrom); // Character ROM
-    mem_map_ram(&mz800.mem, 0, 0x2000, 0x6000, dump_mz800_dram2); // 'load' custom program
+    mem_map_ram(&mz800.mem, 0, 0x2000, 0x6000, mz800.dram2);
     mz800.vram_banked_in = true;
     mem_map_ram(&mz800.mem, 0, 0x8000, 0x4000, mz800.dram3); // VRAM isn't handled by regular memory mapping
     mem_map_ram(&mz800.mem, 0, 0xc000, 0x2000, mz800.dram4);
@@ -229,6 +188,10 @@ void mz800_update_memory_mapping(uint64_t pins) {
 
 uint64_t mz800_cpu_tick(int num_ticks, uint64_t pins) {
     uint64_t out_pins = pins;
+    
+    if(pins & Z80_HALT) {
+        mz800.halt_cb(&mz800.cpu);
+    }
     
     // TODO: interrupt acknowledge
     
@@ -318,14 +281,4 @@ uint64_t mz800_cpu_iorq(uint64_t pins) {
     }
     
     return pins;
-}
-
-/**
- Decode MZ-800 VRAM into RGBA8 buffer
- */
-void mz800_decode_vram(void) {
-    // Size of a scan line in bytes
-    // Bit 2 of DMD: 1 ... 640 pixels, 0 ... 320 pixels
-    // TODO: Check for MZ-700 mode
-    int line_size = (mz800.gdg.dmd & 0x04) ? 80 : 40; // size on scan line in bytes
 }
