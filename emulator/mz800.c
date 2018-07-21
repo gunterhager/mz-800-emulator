@@ -6,7 +6,6 @@
 //------------------------------------------------------------------------------
 
 #include "sokol_app.h"
-#include "sokol_time.h"
 #define CHIPS_IMPL
 #include "chips/z80.h"
 #include "chips/z80pio.h"
@@ -17,6 +16,11 @@
 #include "gdg_whid65040_032.h"
 #include "roms/mz800-roms.h"
 #include "common/gfx.h"
+#include "common/fs.h"
+#include "common/sound.h"
+#include "common/clock.h"
+#include "common/args.h"
+
 #include <ctype.h> /* isupper, islower, toupper, tolower */
 
 /* MZ-800 emulator state and callbacks */
@@ -28,7 +32,6 @@ typedef struct {
     
     // CPU Z80A
     z80_t cpu;
-    uint32_t tick_count;
     
     // PPI i8255, keyboard and cassette driver
     // CTC i8253, programmable counter/timer
@@ -113,6 +116,11 @@ void app_cleanup(void);
 // MARK: - Main
 
 sapp_desc sokol_main(int argc, char* argv[]) {
+    args_init(argc, argv);
+    fs_init();
+    if (args_has("file")) {
+        fs_load_file(args_string("file"));
+    }
     return (sapp_desc) {
         .init_cb = app_init,
         .frame_cb = app_frame,
@@ -129,28 +137,21 @@ sapp_desc sokol_main(int argc, char* argv[]) {
 
 /* one-time application init */
 void app_init() {
-    gfx_init(MZ800_DISP_WIDTH, MZ800_DISP_HEIGHT);
+    gfx_init(MZ800_DISP_WIDTH, MZ800_DISP_HEIGHT, 1, 2);
+    sound_init();
+    clock_init(MZ800_FREQ);
     
-    // Clear screen
+    // Clear screen (DEBUG)
     for (uint32_t index = 0; index < MZ800_DISP_WIDTH * MZ800_DISP_HEIGHT; index++) {
         rgba8_buffer[index] = 0xffff0000;
     }
 
     mz800_init();
-    last_time_stamp = stm_now();
 }
 
 /* per frame stuff, tick the emulator, handle input, decode and draw emulator display */
 void app_frame() {
-    double frame_time = stm_sec(stm_laptime(&last_time_stamp));
-    /* skip long pauses when the app was suspended */
-    if (frame_time > 0.1) {
-        frame_time = 0.1;
-    }
-    uint32_t ticks_to_run = (uint32_t) ((MZ800_FREQ * frame_time) - overrun_ticks);
-    uint32_t ticks_executed = z80_exec(&mz800.cpu, ticks_to_run);
-    assert(ticks_executed >= ticks_to_run);
-    overrun_ticks = ticks_executed - ticks_to_run;
+    clock_ticks_executed(z80_exec(&mz800.cpu, clock_ticks_to_run()));
     // TODO: Keyboard update
     // kbd_update(&mz800.kbd);
     gfx_draw();
@@ -162,21 +163,20 @@ void app_input(const sapp_event* event) {
 
 /* application cleanup callback */
 void app_cleanup() {
+    sound_shutdown();
     gfx_shutdown();
 }
 
 // MARK: - MZ-800 specific functions
 
 void mz800_init(void) {
-    mz800.tick_count = 0;
-    
     mz800_init_memory_mapping();
     z80_init(&mz800.cpu, mz800_cpu_tick);
-    
+        
+    gdg_whid65040_032_init(&mz800.gdg);
+
     // CPU start address
     mz800.cpu.state.PC = 0x2000;
-    
-    gdg_whid65040_032_init(&mz800.gdg);
 }
 
 /**

@@ -4,9 +4,9 @@
 
 SHARP MZ-800 Emulator using Andre Weissflog's https://github.com/floooh/chips emulator infrastructure.
 
-The emulator doesn't come with ROMs included since I think they're still copyrighted material.
+**NOTE:** The emulator doesn't come with ROMs included since I think they're still copyrighted material. You need to provide your own copy of ROMs or use the emulator without.
 
-NOTE: This project has just been started, so don't expect anything useful yet.
+**NOTE:** This project has just been started, so don't expect anything useful yet.
 
 Build and run (exact versions of tools don't matter):
 
