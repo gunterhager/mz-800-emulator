@@ -267,6 +267,8 @@ extern "C" {
      @return Returns a byte of information about the VRAM contents.
      */
     uint8_t gdg_whid65040_032_mem_rd(gdg_whid65040_032_t* gdg, uint16_t addr) {
+        // TODO: not implemented yet
+        CHIPS_ASSERT(NOT_IMPLEMENTED);
         return 0;
     }
     

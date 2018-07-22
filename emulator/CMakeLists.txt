@@ -57,6 +57,7 @@ fips_end_app()
 if (FIPS_OSX AND OSX_XCTEST)
     set(RESOURCE_FILES 
     XCTests/assets/TestHalt.mzf
+    XCTests/assets/TestBorder.mzf
     XCTests/assets/TestCharacters.mzf
     )
     xctest_add_bundle(MZ-800-Emulator-Tests MZ-800-Emulator 

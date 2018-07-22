@@ -44,8 +44,28 @@ void gdgCallback(z80_t *cpu) {
     };
     mz800.halt_cb = gdgCallback;
     
-    [self waitForExpectations:@[expectation] timeout:30];
+    [self waitForExpectations:@[expectation] timeout:10];
 }
+
+- (void)testBorder {
+    
+    XCTestExpectation *expectation = [[XCTestExpectation alloc] initWithDescription:@"Wait for HALT"];
+    
+    XCTAssert([MZFile load:@"TestBorder"]);
+    
+    gdgCallbackBlock = ^(z80_t *cpu) {
+        if(mz800.gdg.bcol == 0b1001) {
+            [expectation fulfill];
+        } else {
+            XCTFail(@"TestBorder found wrong color");
+        }
+    };
+    mz800.halt_cb = gdgCallback;
+    
+    [self waitForExpectations:@[expectation] timeout:10];
+}
+
+
 
 @end
 
