@@ -1,5 +1,5 @@
-; Write a character to the screen without using monitor routines
-; z80asm -b WriteCharacter.asm
+; Dump all characters in CGROM to the screen without using monitor routines
+; z80asm -b TestCharacters.asm
 
 include "MZ800.inc"
 

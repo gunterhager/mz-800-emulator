@@ -55,14 +55,18 @@ fips_end_app()
 
 # add unit tests using XCTest
 if (FIPS_OSX AND OSX_XCTEST)
+    set(RESOURCE_FILES 
+    XCTests/assets/TestHalt.mzf
+    XCTests/assets/TestCharacters.mzf
+    )
     xctest_add_bundle(MZ-800-Emulator-Tests MZ-800-Emulator 
     XCTests/GDGTests.m
-    XCTests/assets/WriteCharacter.mzf
+    XCTests/MZFTests.m
+    XCTests/MZFile.m
+    XCTests/MZFile.h
+    ${RESOURCE_FILES}
     )
     xctest_add_test(XCTest.MZ-800-Emulator MZ-800-Emulator-Tests)
-    set(RESOURCE_FILES 
-    XCTests/assets/WriteCharacter.mzf
-    )
     set_target_properties(MZ-800-Emulator-Tests PROPERTIES
     RESOURCE "${RESOURCE_FILES}"
     )

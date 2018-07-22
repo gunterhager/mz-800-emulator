@@ -98,6 +98,27 @@ extern "C" {
     /* merge 8-bit data bus value into 64-bit pins */
 #define GDG_SET_DATA(p,d) {p=((p&~0xFF0000)|((d&0xFF)<<16));}
     
+    extern void gdg_whid65040_032_init(gdg_whid65040_032_t* gdg);
+    extern void gdg_whid65040_032_reset(gdg_whid65040_032_t* gdg);
+    extern uint64_t gdg_whid65040_032_iorq(gdg_whid65040_032_t* gdg, uint64_t pins);
+    extern uint8_t gdg_whid65040_032_mem_rd(gdg_whid65040_032_t* gdg, uint16_t addr);
+    extern void gdg_whid65040_032_mem_wr(gdg_whid65040_032_t* gdg, uint16_t addr, uint8_t data, uint32_t rgba8_buffer[]);
+    extern void gdg_whid65040_032_set_dmd(gdg_whid65040_032_t* gdg, uint8_t value);
+    extern void gdg_whid65040_032_set_wf(gdg_whid65040_032_t* gdg, uint8_t value);
+
+    /*-- IMPLEMENTATION ----------------------------------------------------------*/
+#ifdef CHIPS_IMPL
+#include <string.h>
+#ifndef CHIPS_DEBUG
+#ifdef _DEBUG
+#define CHIPS_DEBUG
+#endif
+#endif
+#ifndef CHIPS_ASSERT
+#include <assert.h>
+#define CHIPS_ASSERT(c) assert(c)
+#endif
+    
     // Color definition helpers
 #define CI0 (0x78)
 #define CI1 (0xdf)
@@ -127,27 +148,6 @@ extern "C" {
         COLOR_IGRB_TO_ABGR(1, 1, 1, 0), // 1110 light yellow
         COLOR_IGRB_TO_ABGR(1, 1, 1, 1)  // 1111 light white
     };
-    
-    extern void gdg_whid65040_032_init(gdg_whid65040_032_t* gdg);
-    extern void gdg_whid65040_032_reset(gdg_whid65040_032_t* gdg);
-    extern uint64_t gdg_whid65040_032_iorq(gdg_whid65040_032_t* gdg, uint64_t pins);
-    extern uint8_t gdg_whid65040_032_mem_rd(gdg_whid65040_032_t* gdg, uint16_t addr);
-    extern void gdg_whid65040_032_mem_wr(gdg_whid65040_032_t* gdg, uint16_t addr, uint8_t data, uint32_t rgba8_buffer[]);
-    extern void gdg_whid65040_032_set_dmd(gdg_whid65040_032_t* gdg, uint8_t value);
-    extern void gdg_whid65040_032_set_wf(gdg_whid65040_032_t* gdg, uint8_t value);
-
-    /*-- IMPLEMENTATION ----------------------------------------------------------*/
-#ifdef CHIPS_IMPL
-#include <string.h>
-#ifndef CHIPS_DEBUG
-#ifdef _DEBUG
-#define CHIPS_DEBUG
-#endif
-#endif
-#ifndef CHIPS_ASSERT
-#include <assert.h>
-#define CHIPS_ASSERT(c) assert(c)
-#endif
     
     /**
      Call this once to initialize a new GDG WHID 65040-032 instance, this will

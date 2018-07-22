@@ -1,8 +1,8 @@
 //
-//  GDGTests.m
+//  MZFTests.m
 //  MZ-800-Emulator-Tests
 //
-//  Created by Gunter Hager on 21.07.18.
+//  Created by Gunter Hager on 22.07.18.
 //
 
 #import <XCTest/XCTest.h>
@@ -10,17 +10,18 @@
 #import "../mz800.h"
 #import "MZFile.h"
 
-@interface GDGTests : XCTestCase
+@interface MZFTests : XCTestCase
+
 @end
 
 extern mz800_t mz800;
 
-@implementation GDGTests
+@implementation MZFTests
 
-void (^gdgCallbackBlock)(z80_t *cpu);
+void (^mzfCallbackBlock)(z80_t *cpu);
 
-void gdgCallback(z80_t *cpu) {
-    gdgCallbackBlock(cpu);
+void mzfCallback(z80_t *cpu) {
+    mzfCallbackBlock(cpu);
 }
 
 - (void)setUp {
@@ -33,19 +34,17 @@ void gdgCallback(z80_t *cpu) {
     [super tearDown];
 }
 
-- (void)testHalt {
-    
+- (void)testLoadingAndExecuting {
     XCTestExpectation *expectation = [[XCTestExpectation alloc] initWithDescription:@"Wait for HALT"];
     
-    XCTAssert([MZFile load:@"TestCharacters"]);
+    XCTAssert([MZFile load:@"TestHalt"]);
     
-    gdgCallbackBlock = ^(z80_t *cpu) {
+    mzfCallbackBlock = ^(z80_t *cpu) {
         [expectation fulfill];
     };
-    mz800.halt_cb = gdgCallback;
+    mz800.halt_cb = mzfCallback;
     
     [self waitForExpectations:@[expectation] timeout:30];
 }
 
 @end
-
