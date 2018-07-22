@@ -30,6 +30,9 @@ typedef struct {
 } mzf_header;
 
 bool mzf_load(const uint8_t *ptr, uint16_t num_bytes, z80_t *cpu, uint8_t *mem) {
+    if(ptr == NULL) {
+        return false;
+    }
     const mzf_header *hdr = (const mzf_header *)ptr;
 
     if(num_bytes != sizeof(mzf_header) + hdr->file_length) {

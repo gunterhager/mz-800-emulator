@@ -1,3 +1,4 @@
+cmake_minimum_required (VERSION 3.1)
 find_package(XCTest REQUIRED)
 
 # select the sokol-gfx backend depending on platform
@@ -41,7 +42,8 @@ fips_end_lib()
 
 fips_begin_app(MZ-800-Emulator windowed)
     fips_vs_warning_level(3)
-    fips_files(mz800.c)
+    fips_files(mz800.c mz800.h)
+    fips_files(mzf.h)
     fips_files(gdg_whid65040_032.h)
     if (FIPS_IOS)
         fips_files(ios-info.plist)
@@ -52,11 +54,16 @@ fips_begin_app(MZ-800-Emulator windowed)
 fips_end_app()
 
 # add unit tests using XCTest
-if (FIPS_OSX)
-    xctest_add_bundle(MZ-800-Emulator-Tests MZ-800-Emulator XCTests/GDGTests.m)
+if (FIPS_OSX AND OSX_XCTEST)
+    xctest_add_bundle(MZ-800-Emulator-Tests MZ-800-Emulator 
+    XCTests/GDGTests.m
+    XCTests/assets/WriteCharacter.mzf
+    )
     xctest_add_test(XCTest.MZ-800-Emulator MZ-800-Emulator-Tests)
-
-#fips_ide_group(examples)
-#fips_add_subdirectory(examples)
-
+    set(RESOURCE_FILES 
+    XCTests/assets/WriteCharacter.mzf
+    )
+    set_target_properties(MZ-800-Emulator-Tests PROPERTIES
+    RESOURCE "${RESOURCE_FILES}"
+    )
 endif()

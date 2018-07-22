@@ -49,6 +49,12 @@ To open project in IDE:
 > ./fips gen
 > ./fips open
 
+# on OSX with Xcode for creating unit tests using XCTest:
+# (Coverage logging not enabled, you need to edit scheme in Xcode to enable)
+> ./fips set config osx-xcode-xctest
+> ./fips gen
+> ./fips open
+
 # on Windows with Visual Studio:
 > ./fips set config win64-vstudio-debug
 > ./fips gen
@@ -59,3 +65,4 @@ To open project in IDE:
 > ./fips gen
 > ./fips open
 ```
+

@@ -16,6 +16,8 @@
 extern "C" {
 #endif
     
+#define NOT_IMPLEMENTED false
+    
     /// GDG WHID 65040-032 state
     typedef struct {
         /// Write format register
@@ -184,7 +186,7 @@ extern "C" {
             }
             // DEBUG
             else {
-                CHIPS_ASSERT(1);
+                CHIPS_ASSERT(NOT_IMPLEMENTED);
             }
         }
         
@@ -249,7 +251,7 @@ extern "C" {
             }
             // DEBUG
             else {
-                CHIPS_ASSERT(1);
+                CHIPS_ASSERT(NOT_IMPLEMENTED);
             }
         }
         
@@ -388,6 +390,7 @@ extern "C" {
         // MZ-700 mode
         if ((value & 0x0f) == 0x08) {
             // TODO: not implemented yet
+            CHIPS_ASSERT(NOT_IMPLEMENTED);
             return;
         }
         

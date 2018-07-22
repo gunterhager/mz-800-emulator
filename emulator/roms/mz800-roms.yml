@@ -1,3 +1,5 @@
 ---
 files:
+    - mz800_rom1.bin
     - mz800_cgrom.bin
+    - mz800_rom2.bin

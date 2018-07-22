@@ -27,6 +27,8 @@
 
 #include <ctype.h> /* isupper, islower, toupper, tolower */
 
+#define NOT_IMPLEMENTED false
+
 /* MZ-800 emulator state and callbacks */
 #define MZ800_FREQ (3546895) // 3.546895 MHz
 #define MZ800_DISP_WIDTH (640)
@@ -139,17 +141,17 @@ void mz800_init(void) {
 }
 
 /**
- Setup the initial memory mapping with ROM1 and ROM2, the rest is DRAM.
+ Setup the initial memory mapping with ROM1, CGROM and ROM2, the rest is DRAM.
  */
 void mz800_init_memory_mapping(void) {
     // According to SHARP Service Manual
-    mem_map_rom(&mz800.mem, 0, 0x0000, 0x1000, mz800.rom1);
+    mem_map_rom(&mz800.mem, 0, 0x0000, 0x1000, dump_mz800_rom1);
     mem_map_ram(&mz800.mem, 0, 0x1000, 0x1000, dump_mz800_cgrom); // Character ROM
     mem_map_ram(&mz800.mem, 0, 0x2000, 0x6000, mz800.dram2);
     mz800.vram_banked_in = true;
     mem_map_ram(&mz800.mem, 0, 0x8000, 0x4000, mz800.dram3); // VRAM isn't handled by regular memory mapping
     mem_map_ram(&mz800.mem, 0, 0xc000, 0x2000, mz800.dram4);
-    mem_map_rom(&mz800.mem, 0, 0xe000, 0x2000, mz800.rom2);
+    mem_map_rom(&mz800.mem, 0, 0xe000, 0x2000, dump_mz800_rom2);
 }
 
 /**
@@ -171,24 +173,27 @@ void mz800_update_memory_mapping(uint64_t pins) {
     } else if (pins_to_check == mz800_mem_banks[3]) {
         mem_map_ram(&mz800.mem, 0, 0xe000, 0x2000, mz800.dram5);
     } else if (pins_to_check == mz800_mem_banks[4]) {
-        mem_map_rom(&mz800.mem, 0, 0x0000, 0x1000, mz800.rom1);
+        mem_map_rom(&mz800.mem, 0, 0x0000, 0x1000, dump_mz800_rom1);
     } else if (pins_to_check == mz800_mem_banks[5]) {
-        mem_map_rom(&mz800.mem, 0, 0xe000, 0x2000, mz800.rom2);
+        mem_map_rom(&mz800.mem, 0, 0xe000, 0x2000, dump_mz800_rom2);
     } else if (pins_to_check == mz800_mem_banks[6]) {
-        mem_map_rom(&mz800.mem, 0, 0x0000, 0x1000, mz800.rom1);
+        mem_map_rom(&mz800.mem, 0, 0x0000, 0x1000, dump_mz800_rom1);
         mem_map_rom(&mz800.mem, 0, 0x1000, 0x1000, dump_mz800_cgrom);
         mz800.vram_banked_in = true;
-        mem_map_rom(&mz800.mem, 0, 0xe000, 0x2000, mz800.rom2);
+        mem_map_rom(&mz800.mem, 0, 0xe000, 0x2000, dump_mz800_rom2);
     } else if (pins_to_check == mz800_mem_banks[7]) {
         // PROHIBIT not implemented
+        CHIPS_ASSERT(NOT_IMPLEMENTED);
     } else if (pins_to_check == mz800_mem_banks[8]) {
         // RETURN not implemented
+        CHIPS_ASSERT(NOT_IMPLEMENTED);
     }
 }
 
 uint64_t mz800_cpu_tick(int num_ticks, uint64_t pins) {
     uint64_t out_pins = pins;
     
+    // HALT callback, used for unit tests
     if(pins & Z80_HALT) {
         mz800.halt_cb(&mz800.cpu);
     }
@@ -232,6 +237,7 @@ uint64_t mz800_cpu_iorq(uint64_t pins) {
     // Serial I/O
     if (IN_RANGE(address, 0xb0, 0xb3)) {
         // TODO: not implemented
+        CHIPS_ASSERT(NOT_IMPLEMENTED);
     }
     // GDG WHID 65040-032, CRT controller
     else if (IN_RANGE(address, 0xcc, 0xcf)) {
@@ -240,14 +246,17 @@ uint64_t mz800_cpu_iorq(uint64_t pins) {
     // PPI i8255, keyboard and cassette driver
     else if (IN_RANGE(address, 0xd0, 0xd3)) {
         // TODO: not implemented
+        CHIPS_ASSERT(NOT_IMPLEMENTED);
     }
     // CTC i8253, programmable counter/timer
     else if (IN_RANGE(address, 0xd4, 0xd7)) {
         // TODO: not implemented
+        CHIPS_ASSERT(NOT_IMPLEMENTED);
     }
     // FDC, floppy disc controller
     else if (IN_RANGE(address, 0xd8, 0xdf)) {
         // TODO: not implemented
+        CHIPS_ASSERT(NOT_IMPLEMENTED);
     }
     // GDG WHID 65040-032, Memory bank switch
     else if (IN_RANGE(address, 0xe0, 0xe6)) {
@@ -258,6 +267,7 @@ uint64_t mz800_cpu_iorq(uint64_t pins) {
     // Joystick (read only)
     else if ((pins & Z80_RD) && (IN_RANGE(address, 0xf0, 0xf1))) {
         // TODO: not implemented
+        CHIPS_ASSERT(NOT_IMPLEMENTED);
     }
     // GDG WHID 65040-032, Palette register (write only)
     else if ((pins & Z80_WR) && (address == 0xf0)) {
@@ -266,18 +276,21 @@ uint64_t mz800_cpu_iorq(uint64_t pins) {
     // PSG SN 76489 AN, sound generator
     else if (address == 0xf2) {
         // TODO: not implemented
+        CHIPS_ASSERT(NOT_IMPLEMENTED);
     }
     // QDC, quick disk controller
     else if (IN_RANGE(address, 0xf4, 0xf7)) {
         // TODO: not implemented
+        CHIPS_ASSERT(NOT_IMPLEMENTED);
     }
     // PIO Z80 PIO, parallel I/O unit
     else if (IN_RANGE(address, 0xfc, 0xff)) {
         // TODO: not implemented
+        CHIPS_ASSERT(NOT_IMPLEMENTED);
     }
     // DEBUG
     else {
-        CHIPS_ASSERT(1);
+        CHIPS_ASSERT(NOT_IMPLEMENTED);
     }
     
     return pins;
