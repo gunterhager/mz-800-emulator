@@ -284,8 +284,14 @@ extern "C" {
      */
     void gdg_whid65040_032_mem_wr(gdg_whid65040_032_t* gdg, uint16_t addr, uint8_t data, uint32_t rgba8_buffer[]) {
         uint8_t write_mode = gdg->wf >> 5;
-        // TODO: Implement writing to frame B
-        uint8_t *plane_ptr = gdg->vram + addr * 8;
+        uint8_t *plane_ptr;
+        if(gdg->write_frame_b) {
+            // TODO: Implement writing to frame B
+            plane_ptr = 0;
+            CHIPS_ASSERT(NOT_IMPLEMENTED);
+        } else {
+            plane_ptr = gdg->vram + addr * 8;
+        }
         
         // Write into VRAM
         switch (write_mode) {
