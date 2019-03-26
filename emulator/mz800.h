@@ -9,7 +9,6 @@
 #include "chips/z80.h"
 #include "chips/z80pio.h"
 #include "chips/z80ctc.h"
-#include "chips/crt.h"
 #include "chips/kbd.h"
 #include "chips/mem.h"
 #include "gdg_whid65040_032.h"
@@ -26,9 +25,6 @@ typedef struct {
     
     // GDG WHID 65040-032, CRT controller
     gdg_whid65040_032_t gdg;
-    
-    // CRT
-    crt_t crt;
     
     // Keyboard
     kbd_t kbd;

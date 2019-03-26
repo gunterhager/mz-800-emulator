@@ -10,7 +10,6 @@
 #include "chips/z80.h"
 #include "chips/z80pio.h"
 #include "chips/z80ctc.h"
-#include "chips/crt.h"
 #include "chips/kbd.h"
 #include "chips/mem.h"
 
@@ -64,7 +63,7 @@ uint64_t last_time_stamp;
 void mz800_init(void);
 void mz800_init_memory_mapping(void);
 void mz800_update_memory_mapping(uint64_t pins);
-uint64_t mz800_cpu_tick(int num_ticks, uint64_t pins);
+uint64_t mz800_cpu_tick(int num_ticks, uint64_t pins, void* user_data);
 uint64_t mz800_cpu_iorq(uint64_t pins);
 
 /* sokol-app entry, configure application callbacks and window */
@@ -132,12 +131,14 @@ void app_cleanup() {
 
 void mz800_init(void) {
     mz800_init_memory_mapping();
-    z80_init(&mz800.cpu, mz800_cpu_tick);
+    z80_init(&mz800.cpu, &(z80_desc_t){
+        .tick_cb = mz800_cpu_tick
+    });
         
     gdg_whid65040_032_init(&mz800.gdg);
 
     // CPU start address
-    mz800.cpu.state.PC = 0x0000;
+    z80_set_pc(&mz800.cpu, 0x0000);
 }
 
 /**
@@ -190,7 +191,7 @@ void mz800_update_memory_mapping(uint64_t pins) {
     }
 }
 
-uint64_t mz800_cpu_tick(int num_ticks, uint64_t pins) {
+uint64_t mz800_cpu_tick(int num_ticks, uint64_t pins, void* user_data) {
     uint64_t out_pins = pins;
     
     // HALT callback, used for unit tests

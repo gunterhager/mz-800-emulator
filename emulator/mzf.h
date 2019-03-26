@@ -49,6 +49,6 @@ bool mzf_load(const uint8_t *ptr, uint16_t num_bytes, z80_t *cpu, uint8_t *mem) 
     uint8_t *dst = mem + hdr->loading_address;
     
     memcpy(dst, ptr, hdr->file_length);
-    cpu->state.PC = hdr->start_address;
+    z80_set_pc(cpu, hdr->start_address);
     return true;
 }
