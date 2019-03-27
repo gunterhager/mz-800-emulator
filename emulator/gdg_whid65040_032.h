@@ -65,6 +65,9 @@ extern "C" {
         /// Mask that indicates which planes to reset.
         uint8_t reset_planes;
         
+        /// Indicates if machine is in MZ-700 mode. This is actually toggled by setting the DMD register.
+        bool is_mz700;
+        
     } gdg_whid65040_032_t;
     
     /*
@@ -105,6 +108,7 @@ extern "C" {
     extern void gdg_whid65040_032_mem_wr(gdg_whid65040_032_t* gdg, uint16_t addr, uint8_t data, uint32_t rgba8_buffer[]);
     extern void gdg_whid65040_032_set_dmd(gdg_whid65040_032_t* gdg, uint8_t value);
     extern void gdg_whid65040_032_set_wf(gdg_whid65040_032_t* gdg, uint8_t value);
+    extern void gdg_whid65040_032_set_rf(gdg_whid65040_032_t* gdg, uint8_t value);
 
     /*-- IMPLEMENTATION ----------------------------------------------------------*/
 #ifdef CHIPS_IMPL
@@ -267,8 +271,24 @@ extern "C" {
      @return Returns a byte of information about the VRAM contents.
      */
     uint8_t gdg_whid65040_032_mem_rd(gdg_whid65040_032_t* gdg, uint16_t addr) {
-        // TODO: not implemented yet
+        return 0;
+
+#warning "TODO: mem_rd: Implement"
+        
+        if (gdg->is_mz700) {
+#warning "TODO: mem_rd: Implement MZ-700 mode"
+            CHIPS_ASSERT(NOT_IMPLEMENTED);
+        }
+        
         CHIPS_ASSERT(NOT_IMPLEMENTED);
+        uint8_t plane_select = gdg->rf & 0x0f;
+        bool is_searching = gdg->rf & (1 << 7);
+        bool frame_a = gdg->rf & (1 << 4);
+        if (is_searching) {
+            
+        } else {
+            
+        }
         return 0;
     }
     
@@ -286,7 +306,7 @@ extern "C" {
         uint8_t write_mode = gdg->wf >> 5;
         uint8_t *plane_ptr;
         if(gdg->write_frame_b) {
-            // TODO: Implement writing to frame B
+#warning "TODO: mem_wr: Implement writing to frame B"
             plane_ptr = 0;
             CHIPS_ASSERT(NOT_IMPLEMENTED);
         } else {
@@ -294,60 +314,50 @@ extern "C" {
         }
         
         // Write into VRAM
-        switch (write_mode) {
-            case 0: // 000 Single write
-                for (uint8_t bit = 0; bit < 8; bit++, plane_ptr++, data >>= 1) {
+        for (uint8_t bit = 0; bit < 8; bit++, plane_ptr++, data >>= 1) {
+            switch (write_mode) {
+                case 0: // 000 Single write
                     if (data & 0x01) {
                         *plane_ptr |= gdg->write_planes;
                     } else {
                         *plane_ptr &= ~gdg->reset_planes;
                     }
-                }
-                break;
-                
-            case 1: // 001 XOR
-                for (uint8_t bit = 0; bit < 8; bit++, plane_ptr++, data >>= 1) {
+                    break;
+                    
+                case 1: // 001 XOR
                     if (data & 0x01) {
                         *plane_ptr ^= gdg->write_planes;
                     }
-                }
-                break;
-                
-            case 2: // 010 OR
-                for (uint8_t bit = 0; bit < 8; bit++, plane_ptr++, data >>= 1) {
+                    break;
+                    
+                case 2: // 010 OR
                     if (data & 0x01) {
                         *plane_ptr |= gdg->write_planes;
                     }
-                }
-                break;
-                
-            case 3: // 011 Reset
-                for (uint8_t bit = 0; bit < 8; bit++, plane_ptr++, data >>= 1) {
+                    break;
+                    
+                case 3: // 011 Reset
                     if (data & 0x01) {
                         *plane_ptr &= ~gdg->reset_planes;
                     }
-                }
-                break;
-                
-            case 4: // 10x Replace
-            case 5:
-                for (uint8_t bit = 0; bit < 8; bit++, plane_ptr++, data >>= 1) {
+                    break;
+                    
+                case 4: // 10x Replace
+                case 5:
                     if (data & 0x01) {
                         *plane_ptr = gdg->write_planes;
                     } else {
                         *plane_ptr = 0;
                     }
-                }
-                break;
-                
-            case 6: // 11x PSET
-            case 7:
-                for (uint8_t bit = 0; bit < 8; bit++, plane_ptr++, data >>= 1) {
+                    break;
+                    
+                case 6: // 11x PSET
+                case 7:
                     if (data & 0x01) {
                         *plane_ptr = gdg->write_planes;
                     }
-                }
-                break;
+                    break;
+            }
         }
         
         // Decode VRAM into RGB8 buffer
@@ -388,17 +398,32 @@ extern "C" {
         
     }
     
+    /**
+     Sets the display mode register.
+
+     @param gdg Pointer to GDG instance.
+     @param value Value to write into the register.
+     */
     void gdg_whid65040_032_set_dmd(gdg_whid65040_032_t* gdg, uint8_t value) {
         gdg->dmd = value;
+        
+        // MZ-700 mode
+        gdg->is_mz700 = (value & 0x0f) == 0x08;
     }
     
+    /**
+     Sets the write format register.
+
+     @param gdg Pointer to GDG instance.
+     @param value Value to write into the register.
+     */
     void gdg_whid65040_032_set_wf(gdg_whid65040_032_t* gdg, uint8_t value) {
         gdg->wf = value;
         
         // MZ-700 mode
-        if ((value & 0x0f) == 0x08) {
-            // TODO: not implemented yet
-            CHIPS_ASSERT(NOT_IMPLEMENTED);
+        if (value == 0x01) {
+#warning "TODO: set_wf: implement MZ-700 mode"
+//            CHIPS_ASSERT(NOT_IMPLEMENTED);
             return;
         }
         
@@ -431,6 +456,18 @@ extern "C" {
             }
         }
 
+    }
+    
+    /**
+     Sets the read format register.
+     
+     @param gdg Pointer to GDG instance.
+     @param value Value to write into the register.
+     */
+    void gdg_whid65040_032_set_rf(gdg_whid65040_032_t* gdg, uint8_t value) {
+        gdg->rf = value;
+        
+#warning "TODO: set_rf: Implement actually switching stuff"
     }
     
 #endif /* CHIPS_IMPL */
