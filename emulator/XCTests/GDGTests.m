@@ -33,7 +33,7 @@ void gdgCallback(z80_t *cpu) {
     [super tearDown];
 }
 
-- (void)testHalt {
+- (void)testCharacters {
     
     XCTestExpectation *expectation = [[XCTestExpectation alloc] initWithDescription:@"Wait for HALT"];
     
