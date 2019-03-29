@@ -21,12 +21,17 @@ extern "C" {
     /// GDG WHID 65040-032 state
     typedef struct {
         /// Write format register
+        /// Determines how pixel data is written to VRAM.
         uint8_t wf;
+        
         /// Read format register
+        /// Determines how pixel data is read from VRAM:
         uint8_t rf;
         
         /// Display mode register
+        /// Determines how the data in the VRAM is interpreted when decoding to RGB8 buffer.
         uint8_t dmd;
+        
         /// Display status register
         uint8_t status;
         
@@ -53,18 +58,19 @@ extern "C" {
         uint8_t plt_sw;
         
         /// VRAM (one byte for each pixel, we need only 4 bit per pixel)
-        /// Not sure yet if we implement Frames A/B using upper/lower nibble here.
+        /// Each bit corresponds to a pixel on planes I, II, III, IV.
         uint8_t vram[640 * 200];
         
         // Private status properties
         
-        /// Indicates if frame B should be used
-        bool write_frame_b;
         /// Mask that indicates which planes to write to.
         uint8_t write_planes;
         /// Mask that indicates which planes to reset.
         uint8_t reset_planes;
-        
+
+        /// Mask that indicates which planes to read from.
+        uint8_t read_planes;
+
         /// Indicates if machine is in MZ-700 mode. This is actually toggled by setting the DMD register.
         bool is_mz700;
         
@@ -283,7 +289,6 @@ extern "C" {
         CHIPS_ASSERT(NOT_IMPLEMENTED);
         uint8_t plane_select = gdg->rf & 0x0f;
         bool is_searching = gdg->rf & (1 << 7);
-        bool frame_a = gdg->rf & (1 << 4);
         if (is_searching) {
             
         } else {
@@ -299,19 +304,12 @@ extern "C" {
 
      @param gdg Pointer to GDG instance.
      @param addr Address in the VRAM to write to. VRAM addresses start from 0x0000 here.
-     @param data Byte to write to VRAM.
+     @param data Byte to write to VRAM. Each bit corresponds to a single pixel.
      @param rgba8_buffer RGBA8 buffer to write to.
      */
     void gdg_whid65040_032_mem_wr(gdg_whid65040_032_t* gdg, uint16_t addr, uint8_t data, uint32_t rgba8_buffer[]) {
         uint8_t write_mode = gdg->wf >> 5;
-        uint8_t *plane_ptr;
-        if(gdg->write_frame_b) {
-#warning "TODO: mem_wr: Implement writing to frame B"
-            plane_ptr = 0;
-            CHIPS_ASSERT(NOT_IMPLEMENTED);
-        } else {
-            plane_ptr = gdg->vram + addr * 8;
-        }
+        uint8_t *plane_ptr = gdg->vram + addr * 8;
         
         // Write into VRAM
         for (uint8_t bit = 0; bit < 8; bit++, plane_ptr++, data >>= 1) {
@@ -361,6 +359,7 @@ extern "C" {
         }
         
         // Decode VRAM into RGB8 buffer
+#warning "This needs to be refactored to a separate function that should be called when raster line is decoded."
         
         // Setup
         plane_ptr = gdg->vram + addr * 8;
@@ -382,7 +381,19 @@ extern "C" {
                     mz_color = value; // Take color directly from plane data
                 }
             } else { // All other modes take color from palette
-                mz_color = gdg->plt[value];
+                bool use_frame_b = gdg->dmd & 0x01;
+                if (hires) {
+                    if (gdg->dmd & 0x02) { // Special lookup for 640x200, 4 colors
+                        int8_t palette = (value | (value >> 1)) & 0x03; // Combine planes I, III
+                        mz_color = gdg->plt[palette];
+                    } else {
+                        int8_t palette = (use_frame_b ? (value >> 2) : value) & 0x01;
+                        mz_color = gdg->plt[palette];
+                    }
+                } else {
+                    int8_t palette = (use_frame_b ? (value >> 2) : value) & 0x03;
+                    mz_color = gdg->plt[palette];
+                }
             }
             
             // Look up final color
@@ -422,33 +433,38 @@ extern "C" {
         
         // MZ-700 mode
         if (value == 0x01) {
-#warning "TODO: set_wf: implement MZ-700 mode"
-//            CHIPS_ASSERT(NOT_IMPLEMENTED);
             return;
         }
         
         if (gdg->dmd & 0x02) { // 640x200 4 colors, 320x200 16 colors
-            gdg->write_frame_b = false;
+            // Frame B is irrelevant here, no frame switching allowed
             if (gdg->dmd & 0x04) { // 640x200 mode
                 // Planes I, III can be selected
-                // Plane III is shifted down from bit 2 to bit 1 so that decoding the color bits is easier later on
-                gdg->write_planes = (value & 0x01) | ((value >> 1) & 0x02);
-                gdg->reset_planes = ~0x03; // Planes II, IV will be cleared
+                gdg->write_planes = value & 0x05;
+                gdg->reset_planes = ~0x05; // Planes II, IV will be cleared
             } else { // 320x200 mode
                 // Planes I, II, III, IV can be selected
                 gdg->write_planes = value & 0x0f;
                 gdg->reset_planes = ~0x0f; // I don't think that's really necessary since these bits will always be 0
             }
-        } else {
-            gdg->write_frame_b = value & 0x10;
-            gdg->write_planes = gdg->write_frame_b ? (value >> 2) : value;
+        } else { // 640x200 1 color, 320x200 4 colors
+            bool use_frame_b = value & 0x10;
             if (value & 0x80) { // Replace or PSET
                 if (gdg->dmd & 0x04) { // 640x200 mode
-                    gdg->write_planes &= 0x01;
-                    gdg->reset_planes = ~0x01;
+                    if (use_frame_b) {
+                        gdg->write_planes &= 0x04; // Plane III
+                        gdg->reset_planes = ~0x04;
+                    } else {
+                        gdg->write_planes &= 0x01; // Plane I
+                        gdg->reset_planes = ~0x01;                    }
                 } else { // 320x200 mode
-                    gdg->write_planes &= 0x03;
-                    gdg->reset_planes = ~0x03;
+                    if (use_frame_b) {
+                        gdg->write_planes &= 0x0c; // Planes III, IV
+                        gdg->reset_planes = ~0x0c;
+                    } else {
+                        gdg->write_planes &= 0x03; // Planes I, II
+                        gdg->reset_planes = ~0x03;
+                    }
                 }
             } else { // Single Write, XOR, OR, Reset
                 gdg->write_planes &= 0x03;
@@ -466,8 +482,10 @@ extern "C" {
      */
     void gdg_whid65040_032_set_rf(gdg_whid65040_032_t* gdg, uint8_t value) {
         gdg->rf = value;
-        
-#warning "TODO: set_rf: Implement actually switching stuff"
+        bool use_frame_b = value & 0x10;
+
+        // Set read planes mask here
+#warning "TODO: set_rf: Implement setting read planes mask"
     }
     
 #endif /* CHIPS_IMPL */
