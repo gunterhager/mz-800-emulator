@@ -18,6 +18,7 @@ extern "C" {
     
 #define NOT_IMPLEMENTED false
     
+#define VRAMSIZE (640 * 200)
     /// GDG WHID 65040-032 state
     typedef struct {
         /// Write format register
@@ -57,9 +58,14 @@ extern "C" {
         /// Palette switch register (for 16 color mode)
         uint8_t plt_sw;
         
-        /// VRAM (one byte for each pixel, we need only 4 bit per pixel)
+        /// VRAM
+        /// In MZ-700 mode: Starting at 0x0000 each byte corresponds to a character (40x25).
+        /// Starting at 0x0800 each byte corresponds to a color code that controls the color
+        /// for each character and its background. Bit 7 controls if the alternative character set
+        /// should be used for that character.
+        /// In MZ-800 Mode: one byte for each pixel, we need only 4 bit per pixel.
         /// Each bit corresponds to a pixel on planes I, II, III, IV.
-        uint8_t vram[640 * 200];
+        uint8_t vram[VRAMSIZE];
         
         // Private status properties
         
@@ -109,12 +115,18 @@ extern "C" {
     
     extern void gdg_whid65040_032_init(gdg_whid65040_032_t* gdg);
     extern void gdg_whid65040_032_reset(gdg_whid65040_032_t* gdg);
-    extern uint64_t gdg_whid65040_032_iorq(gdg_whid65040_032_t* gdg, uint64_t pins);
+    extern uint64_t gdg_whid65040_032_iorq(gdg_whid65040_032_t* gdg, uint64_t pins, uint32_t rgba8_buffer[]);
+    
     extern uint8_t gdg_whid65040_032_mem_rd(gdg_whid65040_032_t* gdg, uint16_t addr);
     extern void gdg_whid65040_032_mem_wr(gdg_whid65040_032_t* gdg, uint16_t addr, uint8_t data, uint32_t rgba8_buffer[]);
-    extern void gdg_whid65040_032_set_dmd(gdg_whid65040_032_t* gdg, uint8_t value);
-    extern void gdg_whid65040_032_set_wf(gdg_whid65040_032_t* gdg, uint8_t value);
     extern void gdg_whid65040_032_set_rf(gdg_whid65040_032_t* gdg, uint8_t value);
+    extern void gdg_whid65040_032_set_wf(gdg_whid65040_032_t* gdg, uint8_t value);
+
+    extern void gdg_whid65040_032_set_dmd(gdg_whid65040_032_t* gdg, uint8_t value, uint32_t rgba8_buffer[]);
+    
+    extern void gdg_whid65040_032_decode_vram(gdg_whid65040_032_t* gdg, uint16_t addr, uint32_t rgba8_buffer[]);
+    extern void gdg_whid65040_032_decode_vram_mz800(gdg_whid65040_032_t* gdg, uint16_t addr, uint32_t rgba8_buffer[]);
+    extern void gdg_whid65040_032_decode_vram_mz700(gdg_whid65040_032_t* gdg, uint16_t addr, uint32_t rgba8_buffer[]);
 
     /*-- IMPLEMENTATION ----------------------------------------------------------*/
 #ifdef CHIPS_IMPL
@@ -159,6 +171,8 @@ extern "C" {
         COLOR_IGRB_TO_ABGR(1, 1, 1, 1)  // 1111 light white
     };
     
+#pragma mark - Life cycle
+    
     /**
      Call this once to initialize a new GDG WHID 65040-032 instance, this will
      clear the gdg_whid65040_032_t struct and go into a reset state.
@@ -179,7 +193,7 @@ extern "C" {
     /**
      Perform an IORQ machine cycle
      */
-    uint64_t gdg_whid65040_032_iorq(gdg_whid65040_032_t* gdg, uint64_t pins) {
+    uint64_t gdg_whid65040_032_iorq(gdg_whid65040_032_t* gdg, uint64_t pins, uint32_t rgba8_buffer[]) {
         uint64_t outpins = pins;
         if ((pins & (GDG_IORQ | GDG_M1)) != GDG_IORQ) {
             return outpins;
@@ -214,7 +228,7 @@ extern "C" {
             // Display mode register
             else if (low_address == 0x00ce) {
                 uint8_t value = Z80_GET_DATA(pins) & 0x0f; // Only the lower nibble can be set
-                gdg_whid65040_032_set_dmd(gdg, value);
+                gdg_whid65040_032_set_dmd(gdg, value, rgba8_buffer);
             }
             // Scroll offset register 1
             else if (address == 0x01cf) {
@@ -268,6 +282,8 @@ extern "C" {
         return outpins;
     }
     
+#pragma mark - VRAM
+    
     /**
      Read a byte from VRAM. The meaning of the bits in the byte depend on
      the read format register of the GDG.
@@ -277,24 +293,21 @@ extern "C" {
      @return Returns a byte of information about the VRAM contents.
      */
     uint8_t gdg_whid65040_032_mem_rd(gdg_whid65040_032_t* gdg, uint16_t addr) {
-        return 0;
-
-#warning "TODO: mem_rd: Implement"
         
-        if (gdg->is_mz700) {
-#warning "TODO: mem_rd: Implement MZ-700 mode"
-            CHIPS_ASSERT(NOT_IMPLEMENTED);
-        }
-        
-        CHIPS_ASSERT(NOT_IMPLEMENTED);
-        uint8_t plane_select = gdg->rf & 0x0f;
-        bool is_searching = gdg->rf & (1 << 7);
-        if (is_searching) {
-            
+        if (gdg->is_mz700 && (gdg->rf == 0x01)) {
+            return gdg->vram[addr];
         } else {
-            
+            return 0;
+#warning "TODO: mem_rd: Implement"
+
+            uint8_t plane_select = gdg->rf & 0x0f;
+            bool is_searching = gdg->rf & (1 << 7);
+            if (is_searching) {
+                
+            } else {
+                
+            }
         }
-        return 0;
     }
     
     /**
@@ -308,13 +321,17 @@ extern "C" {
      @param rgba8_buffer RGBA8 buffer to write to.
      */
     void gdg_whid65040_032_mem_wr(gdg_whid65040_032_t* gdg, uint16_t addr, uint8_t data, uint32_t rgba8_buffer[]) {
-        uint8_t write_mode = gdg->wf >> 5;
-        uint8_t *plane_ptr = gdg->vram + addr * 8;
         
-        // Write into VRAM
-        for (uint8_t bit = 0; bit < 8; bit++, plane_ptr++, data >>= 1) {
-            switch (write_mode) {
-                case 0: // 000 Single write
+        if (gdg->is_mz700 && (gdg->wf == 0x01)) {
+            gdg->vram[addr] = data;
+        } else {
+            uint8_t write_mode = gdg->wf >> 5;
+            uint8_t *plane_ptr = gdg->vram + addr * 8;
+            
+            // Write into VRAM
+            for (uint8_t bit = 0; bit < 8; bit++, plane_ptr++, data >>= 1) {
+                switch (write_mode) {
+                    case 0: // 000 Single write
                     if (data & 0x01) {
                         *plane_ptr |= gdg->write_planes;
                     } else {
@@ -322,26 +339,26 @@ extern "C" {
                     }
                     break;
                     
-                case 1: // 001 XOR
+                    case 1: // 001 XOR
                     if (data & 0x01) {
                         *plane_ptr ^= gdg->write_planes;
                     }
                     break;
                     
-                case 2: // 010 OR
+                    case 2: // 010 OR
                     if (data & 0x01) {
                         *plane_ptr |= gdg->write_planes;
                     }
                     break;
                     
-                case 3: // 011 Reset
+                    case 3: // 011 Reset
                     if (data & 0x01) {
                         *plane_ptr &= ~gdg->reset_planes;
                     }
                     break;
                     
-                case 4: // 10x Replace
-                case 5:
+                    case 4: // 10x Replace
+                    case 5:
                     if (data & 0x01) {
                         *plane_ptr = gdg->write_planes;
                     } else {
@@ -349,82 +366,23 @@ extern "C" {
                     }
                     break;
                     
-                case 6: // 11x PSET
-                case 7:
+                    case 6: // 11x PSET
+                    case 7:
                     if (data & 0x01) {
                         *plane_ptr = gdg->write_planes;
                     }
                     break;
+                }
             }
         }
         
         // Decode VRAM into RGB8 buffer
-#warning "This needs to be refactored to a separate function that should be called when raster line is decoded."
-        
-        // Setup
-        plane_ptr = gdg->vram + addr * 8;
-        bool hires = gdg->dmd & 0x04; // 640x200 if set
-        uint32_t index = addr * 8 * (hires ? 1 : 2); // Pixel index in rgba8_buffer, in lores we write 2 pixels for each lores pixel
-        
-        // Iterate over 8 bits of a single VRAM byte
-        // We need to set one byte of RGBA8 buffer for each VRAM bit (2 bytes in 320x200 mode)
-        for (uint8_t bit = 0; bit < 8; bit++, plane_ptr++, index++) {
-            // Get value from VRAM
-            uint8_t value = *plane_ptr;
-            
-            // Look up in palette
-            uint8_t mz_color;
-            if (gdg->dmd == 0x02) { // Special lookup for 320x200, 16 colors
-                if (((value >> 2) & 0x03) == gdg->plt_sw) { // If plane III and IV match palette switch
-                    mz_color = gdg->plt[value]; // Take color from palette
-                } else {
-                    mz_color = value; // Take color directly from plane data
-                }
-            } else { // All other modes take color from palette
-                bool use_frame_b = gdg->dmd & 0x01;
-                if (hires) {
-                    if (gdg->dmd & 0x02) { // Special lookup for 640x200, 4 colors
-                        int8_t palette = (value | (value >> 1)) & 0x03; // Combine planes I, III
-                        mz_color = gdg->plt[palette];
-                    } else {
-                        int8_t palette = (use_frame_b ? (value >> 2) : value) & 0x01;
-                        mz_color = gdg->plt[palette];
-                    }
-                } else {
-                    int8_t palette = (use_frame_b ? (value >> 2) : value) & 0x03;
-                    mz_color = gdg->plt[palette];
-                }
-            }
-            
-            // Look up final color
-            uint32_t color = mz800_colors[mz_color];
-            
-            // Write to RGBA8 buffer
-            if (!hires) {
-                // We need to write 2 pixels for each lores pixel
-                rgba8_buffer[index++] = color;
-            }
-            rgba8_buffer[index] = color;
-        }
-        
-    }
-    
-    /**
-     Sets the display mode register.
-
-     @param gdg Pointer to GDG instance.
-     @param value Value to write into the register.
-     */
-    void gdg_whid65040_032_set_dmd(gdg_whid65040_032_t* gdg, uint8_t value) {
-        gdg->dmd = value;
-        
-        // MZ-700 mode
-        gdg->is_mz700 = (value & 0x0f) == 0x08;
+        gdg_whid65040_032_decode_vram(gdg, addr, rgba8_buffer);
     }
     
     /**
      Sets the write format register.
-
+     
      @param gdg Pointer to GDG instance.
      @param value Value to write into the register.
      */
@@ -471,7 +429,7 @@ extern "C" {
                 gdg->reset_planes = ~0x03;
             }
         }
-
+        
     }
     
     /**
@@ -483,9 +441,116 @@ extern "C" {
     void gdg_whid65040_032_set_rf(gdg_whid65040_032_t* gdg, uint8_t value) {
         gdg->rf = value;
         bool use_frame_b = value & 0x10;
-
+        
         // Set read planes mask here
 #warning "TODO: set_rf: Implement setting read planes mask"
+    }
+
+    
+#pragma mark - Display mode
+    
+    /**
+     Sets the display mode register.
+
+     @param gdg Pointer to GDG instance.
+     @param value Value to write into the register.
+     @param rgba8_buffer RGBA8 buffer to write to.
+     */
+    void gdg_whid65040_032_set_dmd(gdg_whid65040_032_t* gdg, uint8_t value, uint32_t rgba8_buffer[]) {
+        uint8_t old_dmd = gdg->dmd;
+        gdg->dmd = value;
+        
+        // MZ-700 mode
+        gdg->is_mz700 = (value & 0x0f) == 0x08;
+        
+        // Trigger decoding of VRAM if mode changed
+        if (old_dmd != value) {
+//            for (uint16_t addr = 0x0000; addr < VRAMSIZE; addr++) {
+//                gdg_whid65040_032_decode_vram(gdg, addr, rgba8_buffer);
+//            }
+        }
+    }
+
+#pragma mark - Decoding VRAM
+    
+    /**
+     Decode one byte of VRAM into the RGBA8 buffer.
+     
+     @param gdg Pointer to GDG instance.
+     @param addr Address in the VRAM to decode from. VRAM addresses start from 0x0000 here.
+     */
+    void gdg_whid65040_032_decode_vram(gdg_whid65040_032_t* gdg, uint16_t addr, uint32_t rgba8_buffer[]) {
+        if (gdg->is_mz700) {
+            gdg_whid65040_032_decode_vram_mz700(gdg, addr, rgba8_buffer);
+        } else {
+            gdg_whid65040_032_decode_vram_mz800(gdg, addr, rgba8_buffer);
+        }
+    }
+    
+    /**
+     Decode one byte of VRAM into the RGBA8 buffer in MZ-700 mode.
+     
+     @param gdg Pointer to GDG instance.
+     @param addr Address in the VRAM to decode from. VRAM addresses start from 0x0000 here.
+     */
+    void gdg_whid65040_032_decode_vram_mz700(gdg_whid65040_032_t* gdg, uint16_t addr, uint32_t rgba8_buffer[]) {
+#warning "TODO: mem_rd: Implement MZ-700 mode"
+//        CHIPS_ASSERT(NOT_IMPLEMENTED);
+    }
+    
+    /**
+     Decode one byte of VRAM into the RGBA8 buffer in MZ-800 mode.
+     
+     @param gdg Pointer to GDG instance.
+     @param addr Address in the VRAM to decode from. VRAM addresses start from 0x0000 here.
+     */
+    void gdg_whid65040_032_decode_vram_mz800(gdg_whid65040_032_t* gdg, uint16_t addr, uint32_t rgba8_buffer[]) {
+        // Setup
+        uint8_t *plane_ptr = gdg->vram + addr * 8;
+        bool hires = gdg->dmd & 0x04; // 640x200 if set
+        uint32_t index = addr * 8 * (hires ? 1 : 2); // Pixel index in rgba8_buffer, in lores we write 2 pixels for each lores pixel
+        
+        // Iterate over 8 bits of a single VRAM byte
+        // We need to set one byte of RGBA8 buffer for each VRAM bit (2 bytes in 320x200 mode)
+        for (uint8_t bit = 0; bit < 8; bit++, plane_ptr++, index++) {
+            // Get value from VRAM
+            uint8_t value = *plane_ptr;
+            
+            // Look up in palette
+            uint8_t mz_color;
+            if (gdg->dmd == 0x02) { // Special lookup for 320x200, 16 colors
+                if (((value >> 2) & 0x03) == gdg->plt_sw) { // If plane III and IV match palette switch
+                    mz_color = gdg->plt[value]; // Take color from palette
+                } else {
+                    mz_color = value; // Take color directly from plane data
+                }
+            } else { // All other modes take color from palette
+                bool use_frame_b = gdg->dmd & 0x01;
+                if (hires) {
+                    if (gdg->dmd & 0x02) { // Special lookup for 640x200, 4 colors
+                        int8_t palette = (value | (value >> 1)) & 0x03; // Combine planes I, III
+                        mz_color = gdg->plt[palette];
+                    } else {
+                        int8_t palette = (use_frame_b ? (value >> 2) : value) & 0x01;
+                        mz_color = gdg->plt[palette];
+                    }
+                } else {
+                    int8_t palette = (use_frame_b ? (value >> 2) : value) & 0x03;
+                    mz_color = gdg->plt[palette];
+                }
+            }
+            
+            // Look up final color
+            uint32_t color = mz800_colors[mz_color];
+            
+            // Write to RGBA8 buffer
+            if (!hires) {
+                // We need to write 2 pixels for each lores pixel
+                rgba8_buffer[index++] = color;
+            }
+            rgba8_buffer[index] = color;
+        }
+
     }
     
 #endif /* CHIPS_IMPL */

@@ -112,7 +112,7 @@ void app_frame() {
     
     /* load MZF file? */
     if (fs_ptr() && clock_frame_count() > 20) {
-        mzf_load(fs_ptr(), fs_size(), &mz800.cpu, mz800.dram0);
+        mzf_load(fs_ptr(), fs_size(), &mz800.cpu, mz800.dram);
         fs_free();
     }
 }
@@ -148,10 +148,10 @@ void mz800_init_memory_mapping(void) {
     // According to SHARP Service Manual
     mem_map_rom(&mz800.mem, 0, 0x0000, 0x1000, dump_mz800_rom1);
     mem_map_ram(&mz800.mem, 0, 0x1000, 0x1000, dump_mz800_cgrom); // Character ROM
-    mem_map_ram(&mz800.mem, 0, 0x2000, 0x6000, mz800.dram2);
+    mem_map_ram(&mz800.mem, 0, 0x2000, 0x6000, mz800.dram + 0x2000);
     mz800.vram_banked_in = true;
-    mem_map_ram(&mz800.mem, 0, 0x8000, 0x4000, mz800.dram3); // VRAM isn't handled by regular memory mapping
-    mem_map_ram(&mz800.mem, 0, 0xc000, 0x2000, mz800.dram4);
+    mem_map_ram(&mz800.mem, 0, 0x8000, 0x4000, mz800.dram + 0x8000); // VRAM isn't handled by regular memory mapping
+    mem_map_ram(&mz800.mem, 0, 0xc000, 0x2000, mz800.dram + 0xc000);
     mem_map_rom(&mz800.mem, 0, 0xe000, 0x2000, dump_mz800_rom2);
 }
 
@@ -162,32 +162,69 @@ void mz800_init_memory_mapping(void) {
  */
 void mz800_update_memory_mapping(uint64_t pins) {
     uint64_t pins_to_check = pins & (Z80_RD | Z80_WR | Z80_IORQ | 0xff);
-    if (pins_to_check == mz800_mem_banks[0]) {
-        mem_map_rom(&mz800.mem, 0, 0x1000, 0x1000, mz800.cgrom);
-        mz800.vram_banked_in = true;
-    } else if (pins_to_check == mz800_mem_banks[1]) {
-        mem_map_ram(&mz800.mem, 0, 0x1000, 0x1000, mz800.dram1);
-        mz800.vram_banked_in = false;
-    } else if (pins_to_check == mz800_mem_banks[2]) {
-        mem_map_ram(&mz800.mem, 0, 0x0000, 0x1000, mz800.dram0);
-        mem_map_ram(&mz800.mem, 0, 0x1000, 0x1000, mz800.dram1);
-    } else if (pins_to_check == mz800_mem_banks[3]) {
-        mem_map_ram(&mz800.mem, 0, 0xe000, 0x2000, mz800.dram5);
-    } else if (pins_to_check == mz800_mem_banks[4]) {
+    
+    switch (pins_to_check) {
+        
+        case O(0xe0):
+        mem_map_ram(&mz800.mem, 0, 0x0000, 0x2000, mz800.dram);
+        break;
+        
+        case O(0xe1):
+        if (mz800.gdg.is_mz700) {
+            mem_map_ram(&mz800.mem, 0, 0xd000, 0x3000, mz800.dram + 0xd000);
+        } else {
+            mem_map_ram(&mz800.mem, 0, 0xe000, 0x2000, mz800.dram + 0xe000);
+        }
+        break;
+        
+        case O(0xe2):
         mem_map_rom(&mz800.mem, 0, 0x0000, 0x1000, dump_mz800_rom1);
-    } else if (pins_to_check == mz800_mem_banks[5]) {
+        break;
+        
+        case O(0xe3):
+        // Special treatment in MZ-700: VRAM in 0xd000-0xdfff, Key, Timer in 0xe000-0xe070
+        // This isn't handled by regular memory mapping
+        if (mz800.gdg.is_mz700) {
+            mz800.vram_banked_in = true;
+        }
         mem_map_rom(&mz800.mem, 0, 0xe000, 0x2000, dump_mz800_rom2);
-    } else if (pins_to_check == mz800_mem_banks[6]) {
+        break;
+
+        case O(0xe4):
         mem_map_rom(&mz800.mem, 0, 0x0000, 0x1000, dump_mz800_rom1);
-        mem_map_rom(&mz800.mem, 0, 0x1000, 0x1000, dump_mz800_cgrom);
+        if (!mz800.gdg.is_mz700) {
+            mem_map_rom(&mz800.mem, 0, 0x1000, 0x1000, dump_mz800_cgrom);
+        }
         mz800.vram_banked_in = true;
         mem_map_rom(&mz800.mem, 0, 0xe000, 0x2000, dump_mz800_rom2);
-    } else if (pins_to_check == mz800_mem_banks[7]) {
+        break;
+        
+        case O(0xe5):
+        // ROM prohibited mode; not sure if i need to support this.
         // PROHIBIT not implemented
         CHIPS_ASSERT(NOT_IMPLEMENTED);
-    } else if (pins_to_check == mz800_mem_banks[8]) {
+        break;
+        
+        case O(0xe6):
+        // ROM return to previous state mode; not sure if i need to support this.
         // RETURN not implemented
         CHIPS_ASSERT(NOT_IMPLEMENTED);
+        break;
+        
+        case I(0xe0):
+        mem_map_rom(&mz800.mem, 0, 0x1000, 0x1000, mz800.cgrom);
+        mz800.vram_banked_in = true;
+        break;
+        
+        case I(0xe1):
+        mem_map_ram(&mz800.mem, 0, 0x1000, 0x1000, mz800.dram + 0x1000);
+        mz800.vram_banked_in = false;
+        break;
+        
+        default:
+        // Should never happen.
+        CHIPS_ASSERT(NOT_IMPLEMENTED);
+        break;
     }
 }
 
@@ -204,7 +241,19 @@ uint64_t mz800_cpu_tick(int num_ticks, uint64_t pins, void* user_data) {
     // Memory request
     if (pins & Z80_MREQ) {
         const uint16_t addr = Z80_GET_ADDR(pins);
-        if (mz800.vram_banked_in && ((addr & 0xc000) == 0x8000)) { // Address range of VRAM
+        if (mz800.vram_banked_in // MZ-700 VRAM range
+            && mz800.gdg.is_mz700
+            && (addr >= 0xd000) && (addr < 0xe000)) {
+            uint16_t vram_addr = addr - 0xd000;
+            if (pins & Z80_RD) {
+                Z80_SET_DATA(out_pins, gdg_whid65040_032_mem_rd(&mz800.gdg, vram_addr));
+            }
+            else if (pins & Z80_WR) {
+                gdg_whid65040_032_mem_wr(&mz800.gdg, vram_addr, Z80_GET_DATA(pins), rgba8_buffer);
+            }
+        } else if (mz800.vram_banked_in // MZ-800 VRAM range
+                   && !mz800.gdg.is_mz700
+                   && (addr >= 0x8000) && (addr < 0xc000)) {
             uint16_t vram_addr = addr - 0x8000;
             if (pins & Z80_RD) {
                 Z80_SET_DATA(out_pins, gdg_whid65040_032_mem_rd(&mz800.gdg, vram_addr));
@@ -212,7 +261,7 @@ uint64_t mz800_cpu_tick(int num_ticks, uint64_t pins, void* user_data) {
             else if (pins & Z80_WR) {
                 gdg_whid65040_032_mem_wr(&mz800.gdg, vram_addr, Z80_GET_DATA(pins), rgba8_buffer);
             }
-        } else {
+        } else { // other memory
             if (pins & Z80_RD) {
                 Z80_SET_DATA(out_pins, mem_rd(&mz800.mem, addr));
             }
@@ -242,7 +291,7 @@ uint64_t mz800_cpu_iorq(uint64_t pins) {
     }
     // GDG WHID 65040-032, CRT controller
     else if (IN_RANGE(address, 0xcc, 0xcf)) {
-        gdg_whid65040_032_iorq(&mz800.gdg, pins);
+        gdg_whid65040_032_iorq(&mz800.gdg, pins, rgba8_buffer);
     }
     // PPI i8255, keyboard and cassette driver
     else if (IN_RANGE(address, 0xd0, 0xd3)) {
@@ -272,7 +321,7 @@ uint64_t mz800_cpu_iorq(uint64_t pins) {
     }
     // GDG WHID 65040-032, Palette register (write only)
     else if ((pins & Z80_WR) && (address == 0xf0)) {
-        gdg_whid65040_032_iorq(&mz800.gdg, pins);
+        gdg_whid65040_032_iorq(&mz800.gdg, pins, rgba8_buffer);
     }
     // PSG SN 76489 AN, sound generator
     else if (address == 0xf2) {

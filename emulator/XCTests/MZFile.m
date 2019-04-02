@@ -20,7 +20,7 @@ extern mz800_t mz800;
     NSData *data = [NSData dataWithContentsOfURL:url];
     
     const uint8_t *ptr = [data bytes];
-    boolean_t result = mzf_load(ptr, [data length], &mz800.cpu, mz800.dram0);
+    boolean_t result = mzf_load(ptr, [data length], &mz800.cpu, mz800.dram);
     return result;
 }
 
