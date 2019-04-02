@@ -1,4 +1,8 @@
 ; Test setting a border color
+;
+; Use z80asm from the z88dk project to build binary file.
+; Command line:
+; z80asm -b TestBorder.asm
 
 include "MZ800.inc"
 

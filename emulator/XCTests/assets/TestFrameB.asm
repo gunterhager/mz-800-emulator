@@ -1,4 +1,8 @@
 ; Writing to Frame B in 640x200, 1 color and then switch to 640x200, 4 color
+;
+; Use z80asm from the z88dk project to build binary file.
+; Command line:
+; z80asm -b TestFrameB.asm
 
 include "MZ800.inc"
 
