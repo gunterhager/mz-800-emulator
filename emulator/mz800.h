@@ -33,9 +33,9 @@ typedef struct {
     mem_t mem;
     
     // ROM
-    uint8_t rom1[0x1000];  // 0x0000-0x0fff
-    uint8_t cgrom[0x1000]; // 0x1000-0x1fff
-    uint8_t rom2[0x2000];  // 0xe000-0xffff
+//    uint8_t rom1[0x1000];  // 0x0000-0x0fff
+//    uint8_t cgrom[0x1000]; // 0x1000-0x1fff
+//    uint8_t rom2[0x2000];  // 0xe000-0xffff
     
     // VRAM
     // 0x8000-0xbfff VRAM not mapped here, emulated by the GDG

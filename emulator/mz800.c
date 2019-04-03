@@ -135,7 +135,7 @@ void mz800_init(void) {
         .tick_cb = mz800_cpu_tick
     });
         
-    gdg_whid65040_032_init(&mz800.gdg);
+    gdg_whid65040_032_init(&mz800.gdg, dump_mz800_cgrom, rgba8_buffer);
 
     // CPU start address
     z80_set_pc(&mz800.cpu, 0x0000);
@@ -212,7 +212,7 @@ void mz800_update_memory_mapping(uint64_t pins) {
         break;
         
         case I(0xe0):
-        mem_map_rom(&mz800.mem, 0, 0x1000, 0x1000, mz800.cgrom);
+        mem_map_rom(&mz800.mem, 0, 0x1000, 0x1000, dump_mz800_cgrom);
         mz800.vram_banked_in = true;
         break;
         
@@ -249,7 +249,7 @@ uint64_t mz800_cpu_tick(int num_ticks, uint64_t pins, void* user_data) {
                 Z80_SET_DATA(out_pins, gdg_whid65040_032_mem_rd(&mz800.gdg, vram_addr));
             }
             else if (pins & Z80_WR) {
-                gdg_whid65040_032_mem_wr(&mz800.gdg, vram_addr, Z80_GET_DATA(pins), rgba8_buffer);
+                gdg_whid65040_032_mem_wr(&mz800.gdg, vram_addr, Z80_GET_DATA(pins));
             }
         } else if (mz800.vram_banked_in // MZ-800 VRAM range
                    && !mz800.gdg.is_mz700
@@ -259,7 +259,7 @@ uint64_t mz800_cpu_tick(int num_ticks, uint64_t pins, void* user_data) {
                 Z80_SET_DATA(out_pins, gdg_whid65040_032_mem_rd(&mz800.gdg, vram_addr));
             }
             else if (pins & Z80_WR) {
-                gdg_whid65040_032_mem_wr(&mz800.gdg, vram_addr, Z80_GET_DATA(pins), rgba8_buffer);
+                gdg_whid65040_032_mem_wr(&mz800.gdg, vram_addr, Z80_GET_DATA(pins));
             }
         } else { // other memory
             if (pins & Z80_RD) {
@@ -291,7 +291,7 @@ uint64_t mz800_cpu_iorq(uint64_t pins) {
     }
     // GDG WHID 65040-032, CRT controller
     else if (IN_RANGE(address, 0xcc, 0xcf)) {
-        gdg_whid65040_032_iorq(&mz800.gdg, pins, rgba8_buffer);
+        gdg_whid65040_032_iorq(&mz800.gdg, pins);
     }
     // PPI i8255, keyboard and cassette driver
     else if (IN_RANGE(address, 0xd0, 0xd3)) {
@@ -321,7 +321,7 @@ uint64_t mz800_cpu_iorq(uint64_t pins) {
     }
     // GDG WHID 65040-032, Palette register (write only)
     else if ((pins & Z80_WR) && (address == 0xf0)) {
-        gdg_whid65040_032_iorq(&mz800.gdg, pins, rgba8_buffer);
+        gdg_whid65040_032_iorq(&mz800.gdg, pins);
     }
     // PSG SN 76489 AN, sound generator
     else if (address == 0xf2) {

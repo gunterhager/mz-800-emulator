@@ -15,6 +15,11 @@ defc MemoryVRAMStart         = 08000h
 defc MemoryVRAMShortEnd      = 09fffh ; 320x200
 defc MemoryVRAMLongEnd       = 0bfffh ; 640x200
 
+defc MemoryMZ700VRAMStart         = 0d000h ; Character VRAM, 40x25
+defc MemoryMZ700VRAMEnd           = 0d3e7h
+defc MemoryMZ700VRAMColorStart    = 0d800h ; Color VRAM
+defc MemoryMZ700VRAMColorEnd      = 0dbe7h
+
 defc MemoryMonitorROM2Start  = 0e000h
 defc MemoryMonitorROM2End    = 0ffffh
 
