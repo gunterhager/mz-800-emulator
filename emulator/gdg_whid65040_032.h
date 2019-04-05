@@ -512,7 +512,6 @@ extern "C" {
 
         // Convert color code to foreground and background colors
         uint8_t color_code = gdg->vram[color_addr];
-        color_code = 0x71;
         uint8_t fg_color_code = (color_code & 0x70) >> 4;
         fg_color_code = (fg_color_code == 0) ? 0 : fg_color_code | 0x8; // All colors except black should be high intensity
         uint32_t fg_color = mz800_colors[fg_color_code];
