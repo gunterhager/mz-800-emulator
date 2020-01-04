@@ -1,31 +1,30 @@
 //------------------------------------------------------------------------------
 //  i8255-test.c
 //------------------------------------------------------------------------------
-// force assert() enabled
-#ifdef NDEBUG
-#undef NDEBUG
-#endif
 #define CHIPS_IMPL
 #include "chips/i8255.h"
-#include <stdio.h>
+#include "utest.h"
 
-uint32_t num_tests = 0;
-#define T(x) { assert(x); num_tests++; }
+#define T(b) ASSERT_TRUE(b)
 
-uint8_t values[I8255_NUM_PORTS] = { 0 };
+static uint8_t values[I8255_NUM_PORTS] = { 0 };
 
-uint8_t in_cb(int port_id) {
+static uint8_t in_cb(int port_id, void* user_data) {
     return values[port_id];
 }
 
-uint64_t out_cb(int port_id, uint64_t pins, uint8_t data) {
+static uint64_t out_cb(int port_id, uint64_t pins, uint8_t data, void* user_data) {
     values[port_id] = data;
     return pins;
 }
 
-void test_mode_select() {
+UTEST(i8255, mode_select) {
     i8255_t ppi;
-    i8255_init(&ppi, in_cb, out_cb);
+    i8255_init(&ppi, &(i8255_desc_t){
+        .in_cb = in_cb,
+        .out_cb = out_cb,
+        .user_data = 0
+    });
     values[0] = 0x12; values[1] = 0x34; values[2] = 0x45;
 
     /* configure mode:
@@ -58,9 +57,13 @@ void test_mode_select() {
     T(res_ctrl == ctrl);
 }
 
-void test_bit_set_clear() {
+UTEST(i8255, test_bit_set_clear) {
     i8255_t ppi;
-    i8255_init(&ppi, in_cb, out_cb);
+    i8255_init(&ppi, &(i8255_desc_t){
+        .in_cb = in_cb,
+        .out_cb = out_cb,
+        .user_data = 0
+    });
     values[0] = 0x12; values[1] = 0x34; values[2] = 0x45;
 
     /* set port C to output */
@@ -93,9 +96,13 @@ void test_bit_set_clear() {
     T(values[2] == (1<<3));   // only bit 3 must be set
 }
 
-void test_in_out() {
+UTEST(i8255, in_out) {
     i8255_t ppi;
-    i8255_init(&ppi, in_cb, out_cb);
+    i8255_init(&ppi, &(i8255_desc_t){
+        .in_cb = in_cb,
+        .out_cb = out_cb,
+        .user_data = 0
+    });
     values[0] = 0x12; values[1] = 0x34; values[2] = 0x45;
 
     /* configure mode:
@@ -157,11 +164,4 @@ void test_in_out() {
     pins = i8255_iorq(&ppi, pins);
     data = I8255_GET_DATA(pins);
     T(data == 0x74);
-}
-
-int main() {
-    test_mode_select();
-    test_bit_set_clear();
-    test_in_out();
-    return 0;
 }
