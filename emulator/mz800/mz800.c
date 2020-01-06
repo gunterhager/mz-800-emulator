@@ -113,15 +113,12 @@ void app_init() {
     if (sargs_exists("file")) {
         delay_input = true;
         if (!fs_load_file(sargs_value("file"))) {
+            CHIPS_ASSERT("Couldn't load file");
             gfx_flash_error();
         }
     }
 
     mz800_init();
-    
-    if (sargs_exists("file")) {
-        
-    }
     
     /* keyboard input to send to emulator */
     if (!delay_input) {
@@ -142,6 +139,24 @@ void app_frame() {
         mzf_load(fs_ptr(), fs_size(), &mz800.cpu, mz800.dram);
         fs_free();
     }
+    
+    if (fs_ptr() && clock_frame_count() > load_delay_frames) {
+        bool load_success = false;
+        load_success = mzf_load(fs_ptr(), fs_size(), &mz800.cpu, mz800.dram);
+        if (load_success) {
+            if (clock_frame_count() > (load_delay_frames + 10)) {
+                gfx_flash_success();
+            }
+            if (sargs_exists("input")) {
+                keybuf_put(sargs_value("input"));
+            }
+        }
+        else {
+            gfx_flash_error();
+        }
+        fs_free();
+    }
+
 
     // TODO: Keyboard update
 }
@@ -162,6 +177,9 @@ void app_cleanup() {
 
 void mz800_init(void) {
     mz800_init_memory_mapping();
+    
+    clk_init(&mz800.clk, MZ800_FREQ);
+
     z80_init(&mz800.cpu, &(z80_desc_t){
         .tick_cb = mz800_cpu_tick
     });
@@ -273,7 +291,9 @@ uint64_t mz800_cpu_tick(int num_ticks, uint64_t pins, void* user_data) {
     
     // HALT callback, used for unit tests
     if (pins & Z80_HALT) {
-        mz800.halt_cb(&mz800.cpu);
+        if (mz800.halt_cb) {
+            mz800.halt_cb(&mz800.cpu);
+        }
     }
     
     // TODO: interrupt acknowledge

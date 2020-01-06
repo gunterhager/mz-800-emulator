@@ -38,6 +38,7 @@ bool mzf_load(const uint8_t *ptr, uint16_t num_bytes, z80_t *cpu, uint8_t *mem) 
     if (num_bytes != sizeof(mzf_header) + hdr->file_length) {
         return false;
     }
+    // File size can't exceed 64K
     if (hdr->file_length > 0x10000 - hdr->start_address) {
         return false;
     }
