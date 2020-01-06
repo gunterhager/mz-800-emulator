@@ -119,6 +119,10 @@ void app_init() {
 
     mz800_init();
     
+    if (sargs_exists("file")) {
+        
+    }
+    
     /* keyboard input to send to emulator */
     if (!delay_input) {
         if (sargs_exists("input")) {
@@ -268,7 +272,7 @@ uint64_t mz800_cpu_tick(int num_ticks, uint64_t pins, void* user_data) {
     uint64_t out_pins = pins;
     
     // HALT callback, used for unit tests
-    if(pins & Z80_HALT) {
+    if (pins & Z80_HALT) {
         mz800.halt_cb(&mz800.cpu);
     }
     
