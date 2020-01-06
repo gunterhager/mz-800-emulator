@@ -18,6 +18,8 @@ if (FIPS_OSX AND OSX_XCTEST)
     XCTests/assets/TestHalt.mzf
     XCTests/assets/TestBorder.mzf
     XCTests/assets/TestCharacters.mzf
+    XCTests/assets/TestMZ700Color.mzf
+    XCTests/assets/TestMZ700VRAM.mzf
     )
     xctest_add_bundle(MZ-800-Emulator-Tests MZ-800-Emulator
     XCTests/GDGTests.m
