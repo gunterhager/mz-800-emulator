@@ -37,12 +37,12 @@ void gdgCallback(z80_t *cpu) {
     
     XCTestExpectation *expectation = [[XCTestExpectation alloc] initWithDescription:@"Wait for HALT"];
     
-    XCTAssert([MZFile load:@"TestCharacters"]);
-    
     gdgCallbackBlock = ^(z80_t *cpu) {
         [expectation fulfill];
     };
     mz800.halt_cb = gdgCallback;
+    
+    XCTAssert([MZFile load:@"TestCharacters"]);
     
     [self waitForExpectations:@[expectation] timeout:10];
 }
@@ -51,12 +51,12 @@ void gdgCallback(z80_t *cpu) {
     
     XCTestExpectation *expectation = [[XCTestExpectation alloc] initWithDescription:@"Wait for HALT"];
     
-    XCTAssert([MZFile load:@"TestMZ700VRAM"]);
-    
     gdgCallbackBlock = ^(z80_t *cpu) {
         [expectation fulfill];
     };
     mz800.halt_cb = gdgCallback;
+    
+    XCTAssert([MZFile load:@"TestMZ700VRAM"]);
     
     [self waitForExpectations:@[expectation] timeout:10];
 }
@@ -68,12 +68,12 @@ void gdgCallback(z80_t *cpu) {
     // Fill VRAM with character B
     memset(mz800.gdg.vram, 0x02, 0x3e8);
     
-    XCTAssert([MZFile load:@"TestMZ700Color"]);
-    
     gdgCallbackBlock = ^(z80_t *cpu) {
         [expectation fulfill];
     };
     mz800.halt_cb = gdgCallback;
+    
+    XCTAssert([MZFile load:@"TestMZ700Color"]);
     
     [self waitForExpectations:@[expectation] timeout:10];
 }
@@ -81,8 +81,6 @@ void gdgCallback(z80_t *cpu) {
 - (void)testBorder {
     
     XCTestExpectation *expectation = [[XCTestExpectation alloc] initWithDescription:@"Wait for HALT"];
-    
-    XCTAssert([MZFile load:@"TestBorder"]);
     
     gdgCallbackBlock = ^(z80_t *cpu) {
         if(mz800.gdg.bcol == 0b1001) {
@@ -92,6 +90,8 @@ void gdgCallback(z80_t *cpu) {
         }
     };
     mz800.halt_cb = gdgCallback;
+    
+    XCTAssert([MZFile load:@"TestBorder"]);
     
     [self waitForExpectations:@[expectation] timeout:10];
 }

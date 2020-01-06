@@ -24,25 +24,15 @@ void mzfCallback(z80_t *cpu) {
     mzfCallbackBlock(cpu);
 }
 
-- (void)setUp {
-    [super setUp];
-    // Put setup code here. This method is called before the invocation of each test method in the class.
-}
-
-- (void)tearDown {
-    // Put teardown code here. This method is called after the invocation of each test method in the class.
-    [super tearDown];
-}
-
 - (void)testLoadingAndExecuting {
     XCTestExpectation *expectation = [[XCTestExpectation alloc] initWithDescription:@"Wait for HALT"];
-    
-    XCTAssert([MZFile load:@"TestHalt"]);
     
     mzfCallbackBlock = ^(z80_t *cpu) {
         [expectation fulfill];
     };
     mz800.halt_cb = mzfCallback;
+    
+    XCTAssert([MZFile load:@"TestHalt"]);
     
     [self waitForExpectations:@[expectation] timeout:30];
 }
