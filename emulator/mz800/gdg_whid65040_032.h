@@ -310,6 +310,7 @@ extern "C" {
             return gdg->vram[addr];
         } else {
             return 0;
+			// TODO: not implemented
 #warning "TODO: mem_rd: Implement"
 
             uint8_t plane_select = gdg->rf & 0x0f;
@@ -454,6 +455,7 @@ extern "C" {
         bool use_frame_b = value & 0x10;
         
         // Set read planes mask here
+		// TODO: not implemented
 #warning "TODO: set_rf: Implement setting read planes mask"
     }
 

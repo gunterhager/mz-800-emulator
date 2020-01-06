@@ -8,7 +8,7 @@
 
 #include "chips/z80.h"
 #include "chips/z80pio.h"
-#include "chips/z80ctc.h"
+#include "chips/i8255.h"
 #include "chips/clk.h"
 #include "chips/kbd.h"
 #include "chips/mem.h"
@@ -20,9 +20,16 @@ typedef struct {
     z80_t cpu;
     
     // PPI i8255, keyboard and cassette driver
+	i8255_t ppi;
+	
     // CTC i8253, programmable counter/timer
+	// TODO: not implemented
+
     // PIO Z80 PIO, parallel I/O unit
-    // PSG SN 76489 AN, sound generator
+	z80pio_t pio;
+    
+	// PSG SN 76489 AN, sound generator
+	// TODO: not implemented
     
     // GDG WHID 65040-032, CRT controller
     gdg_whid65040_032_t gdg;

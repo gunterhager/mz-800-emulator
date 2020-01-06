@@ -9,7 +9,7 @@
 #define CHIPS_IMPL
 #include "chips/z80.h"
 #include "chips/z80pio.h"
-#include "chips/z80ctc.h"
+#include "chips/i8255.h"
 #include "chips/clk.h"
 #include "chips/kbd.h"
 #include "chips/mem.h"
@@ -64,7 +64,7 @@ uint64_t last_time_stamp;
 
 void mz800_init(void);
 void mz800_init_memory_mapping(void);
-void mz800_update_memory_mapping(uint64_t pins);
+uint64_t mz800_update_memory_mapping(uint64_t pins);
 void mz800_exec(mz800_t* sys, uint32_t micro_seconds);
 uint64_t mz800_cpu_tick(int num_ticks, uint64_t pins, void* user_data);
 uint64_t mz800_cpu_iorq(uint64_t pins);
@@ -173,6 +173,26 @@ void app_cleanup() {
     sargs_shutdown();
 }
 
+// MARK: - PPI callbacks
+
+uint8_t ppi_in_cb(int port_id, void* user_data) {
+	return 0;
+}
+
+uint64_t ppi_out_cb(int port_id, uint64_t pins, uint8_t data, void* user_data) {
+	return 0;
+}
+
+// MARK: - PIO callbacks
+
+uint8_t pio_in_cb(int port_id, void* user_data) {
+	return 0;
+}
+
+void pio_out_cb(int port_id, uint8_t data, void* user_data) {
+	
+}
+
 // MARK: - MZ-800 specific functions
 
 void mz800_init(void) {
@@ -183,7 +203,17 @@ void mz800_init(void) {
     z80_init(&mz800.cpu, &(z80_desc_t){
         .tick_cb = mz800_cpu_tick
     });
-        
+
+	i8255_init(&mz800.ppi, &(i8255_desc_t){
+		.in_cb = ppi_in_cb,
+		.out_cb = ppi_out_cb
+	});
+	
+	z80pio_init(&mz800.pio, &(z80pio_desc_t){
+		.in_cb = pio_in_cb,
+		.out_cb = pio_out_cb
+	});
+	
     gdg_whid65040_032_init(&mz800.gdg, dump_mz800_cgrom_bin, gfx_framebuffer());
 
     // CPU start address
@@ -208,8 +238,9 @@ void mz800_init_memory_mapping(void) {
  Updates the memory mapping for the bank switch IO requests.
 
  @param pins Z80 pins with IO request for bank switching.
+ @return Returns pins.
  */
-void mz800_update_memory_mapping(uint64_t pins) {
+uint64_t mz800_update_memory_mapping(uint64_t pins) {
     uint64_t pins_to_check = pins & (Z80_RD | Z80_WR | Z80_IORQ | 0xff);
     
     switch (pins_to_check) {
@@ -275,6 +306,8 @@ void mz800_update_memory_mapping(uint64_t pins) {
         CHIPS_ASSERT(NOT_IMPLEMENTED);
         break;
     }
+	
+	return pins;
 }
 
 void mz800_exec(mz800_t* sys, uint32_t micro_seconds) {
@@ -351,12 +384,13 @@ uint64_t mz800_cpu_iorq(uint64_t pins) {
     }
     // GDG WHID 65040-032, CRT controller
     else if (IN_RANGE(address, 0xcc, 0xcf)) {
-        gdg_whid65040_032_iorq(&mz800.gdg, pins);
+        return gdg_whid65040_032_iorq(&mz800.gdg, pins);
     }
     // PPI i8255, keyboard and cassette driver
     else if (IN_RANGE(address, 0xd0, 0xd3)) {
         // TODO: not implemented
         CHIPS_ASSERT(NOT_IMPLEMENTED);
+		return i8255_iorq(&mz800.ppi, pins);
     }
     // CTC i8253, programmable counter/timer
     else if (IN_RANGE(address, 0xd4, 0xd7)) {
@@ -372,7 +406,7 @@ uint64_t mz800_cpu_iorq(uint64_t pins) {
     else if (IN_RANGE(address, 0xe0, 0xe6)) {
         // Currently this isn't supported by the GDG emulation,
         // so we do the bank switch directly here.
-        mz800_update_memory_mapping(pins);
+        return mz800_update_memory_mapping(pins);
     }
     // Joystick (read only)
     else if ((pins & Z80_RD) && (IN_RANGE(address, 0xf0, 0xf1))) {
@@ -381,7 +415,7 @@ uint64_t mz800_cpu_iorq(uint64_t pins) {
     }
     // GDG WHID 65040-032, Palette register (write only)
     else if ((pins & Z80_WR) && (address == 0xf0)) {
-        gdg_whid65040_032_iorq(&mz800.gdg, pins);
+        return gdg_whid65040_032_iorq(&mz800.gdg, pins);
     }
     // PSG SN 76489 AN, sound generator
     else if (address == 0xf2) {
