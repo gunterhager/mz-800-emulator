@@ -19,10 +19,17 @@ typedef struct {
     // CPU Z80A
     z80_t cpu;
     
-    // PPI i8255, keyboard and cassette driver
+    // PPI i8255, programmable peripheral interface
+    // Used as keyboard and cassette driver.
+    // Port A: Keyboard matrix, connected to multiplexer 74LS145
+    // Port B: Keyboard matrix
+    // Port C: Cassette and sound generator (?)
 	i8255_t ppi;
 	
     // CTC i8253, programmable counter/timer
+    // Counter 0:
+    // Counter 1:
+    // Counter 2:
 	// TODO: not implemented
 
     // PIO Z80 PIO, parallel I/O unit
@@ -33,6 +40,11 @@ typedef struct {
     
     // GDG WHID 65040-032, CRT controller
     gdg_whid65040_032_t gdg;
+    
+    // IC556 Dual Timer
+    // Timer 0:
+    // Timer 1: 
+    // TODO: not implemented (might not be needed)
     
     // Clock
     clk_t clk;

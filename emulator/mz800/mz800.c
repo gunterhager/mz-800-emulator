@@ -387,6 +387,33 @@ uint64_t mz800_cpu_iorq(uint64_t pins) {
         return gdg_whid65040_032_iorq(&mz800.gdg, pins);
     }
     // PPI i8255, keyboard and cassette driver
+    // Pin connections from Z80 -> PPI
+    //    GND -> ~CS (low active, so always active?)
+    //     A0 -> A0
+    //     A1 -> A1
+    //     RD -> RD
+    //     WR -> WR
+    // D0..D7 -> D0..D7
+    // Pin connections from PPI to other chips:
+    //    PA0 -> A 74LS145 (Multiplexer keyboard matrix, KEYSTROBE)
+    //    PA1 -> B 74LS145 (Multiplexer keyboard matrix, KEYSTROBE)
+    //    PA2 -> C 74LS145 (Multiplexer keyboard matrix, KEYSTROBE)
+    //    PA3 -> D 74LS145 (Multiplexer keyboard matrix, KEYSTROBE)
+    //    PA4 -> COMA T-6 Pin 8 (Joystick A)
+    //    PA5 -> COMB T-7 Pin 8 (Joystick B)
+    //    PA6 <-
+    //    PA7 -> RST IC556 Dual timer (Reset cursor flashing timer)
+    //
+    // PB0..PB7 <- Keyboard
+    //
+    //    PC0 -> AUDIO IN Pin 9 PSG (Sound generator, SMSK)
+    //    PC1 -> WRITE T-5 Pin 7 (Cassette)
+    //    PC2 -> A4 PIO (NAND with CTC OUT2, INTMSK)
+    //    PC3 -> MOTOR Flipflop T-5 Pin 4 (Cassette)
+    //    PC4 <- MOTOR Flipflop T-5 Pin 4 (Cassette)
+    //    PC5 <- READ T-5 Pin 8 (Cassette)
+    //    PC6 <- OUT IC556 Dual timer (Cursor flashing timer)
+    //    PC7 <- ~VBLN (low active)
     else if (IN_RANGE(address, 0xd0, 0xd3)) {
         // TODO: not implemented
         CHIPS_ASSERT(NOT_IMPLEMENTED);
