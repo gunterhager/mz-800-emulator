@@ -180,7 +180,40 @@ uint8_t ppi_in_cb(int port_id, void* user_data) {
 }
 
 uint64_t ppi_out_cb(int port_id, uint64_t pins, uint8_t data, void* user_data) {
-	return 0;
+    // Pin connections from PPI to other chips:
+    //    PA0 -> A 74LS145 (BCD decoder keyboard matrix, KEYSTROBE)
+    //    PA1 -> B 74LS145 (BCD decoder keyboard matrix, KEYSTROBE)
+    //    PA2 -> C 74LS145 (BCD decoder keyboard matrix, KEYSTROBE)
+    //    PA3 -> D 74LS145 (BCD decoder keyboard matrix, KEYSTROBE)
+    //    PA4 -> COMA T-6 Pin 8 (Joystick A)
+    //    PA5 -> COMB T-7 Pin 8 (Joystick B)
+    //    PA6 <- (NOT USED)
+    //    PA7 -> ~RST IC556 Dual timer (Reset cursor flashing timer, low active)
+    if (port_id == I8255_PORT_A) {
+        kbd_set_active_columns(&mz800.kbd, 1 << (data & 0x0F));
+        // TODO: Implement joystick COM and reset cursor timer
+    }
+
+    // Pin connections from PPI to other chips:
+    // PB0..PB7 <- Keyboard
+    if (port_id == I8255_PORT_B) {
+        
+    }
+    
+    // Pin connections from PPI to other chips:    //
+    //    PC0 -> AUDIO IN Pin 9 PSG (Sound generator, SMSK)
+    //    PC1 -> WRITE T-5 Pin 7 (Cassette)
+    //    PC2 -> A4 PIO (NAND with CTC OUT2, INTMSK)
+    //    PC3 -> MOTOR Flipflop T-5 Pin 4 (Cassette)
+    //    PC4 <- MOTOR Flipflop T-5 Pin 4 (Cassette)
+    //    PC5 <- READ T-5 Pin 8 (Cassette)
+    //    PC6 <- OUT IC556 Dual timer (Cursor flashing timer)
+    //    PC7 <- ~VBLN (low active)
+    if (port_id == I8255_PORT_C) {
+        
+    }
+    
+	return pins;
 }
 
 // MARK: - PIO callbacks
@@ -375,7 +408,8 @@ uint64_t mz800_cpu_tick(int num_ticks, uint64_t pins, void* user_data) {
 #define IN_RANGE(A,B,C) (((A)>=(B))&&((A)<=(C)))
 
 uint64_t mz800_cpu_iorq(uint64_t pins) {
-    uint16_t address = Z80_GET_ADDR(pins) & 0xff; // check only the lower byte of the address
+    // check only the lower byte of the address
+    uint16_t address = Z80_GET_ADDR(pins) & 0xff;
     
     // Serial I/O
     if (IN_RANGE(address, 0xb0, 0xb3)) {
@@ -394,30 +428,13 @@ uint64_t mz800_cpu_iorq(uint64_t pins) {
     //     RD -> RD
     //     WR -> WR
     // D0..D7 -> D0..D7
-    // Pin connections from PPI to other chips:
-    //    PA0 -> A 74LS145 (Multiplexer keyboard matrix, KEYSTROBE)
-    //    PA1 -> B 74LS145 (Multiplexer keyboard matrix, KEYSTROBE)
-    //    PA2 -> C 74LS145 (Multiplexer keyboard matrix, KEYSTROBE)
-    //    PA3 -> D 74LS145 (Multiplexer keyboard matrix, KEYSTROBE)
-    //    PA4 -> COMA T-6 Pin 8 (Joystick A)
-    //    PA5 -> COMB T-7 Pin 8 (Joystick B)
-    //    PA6 <-
-    //    PA7 -> RST IC556 Dual timer (Reset cursor flashing timer)
-    //
-    // PB0..PB7 <- Keyboard
-    //
-    //    PC0 -> AUDIO IN Pin 9 PSG (Sound generator, SMSK)
-    //    PC1 -> WRITE T-5 Pin 7 (Cassette)
-    //    PC2 -> A4 PIO (NAND with CTC OUT2, INTMSK)
-    //    PC3 -> MOTOR Flipflop T-5 Pin 4 (Cassette)
-    //    PC4 <- MOTOR Flipflop T-5 Pin 4 (Cassette)
-    //    PC5 <- READ T-5 Pin 8 (Cassette)
-    //    PC6 <- OUT IC556 Dual timer (Cursor flashing timer)
-    //    PC7 <- ~VBLN (low active)
     else if (IN_RANGE(address, 0xd0, 0xd3)) {
-        // TODO: not implemented
-        CHIPS_ASSERT(NOT_IMPLEMENTED);
-		return i8255_iorq(&mz800.ppi, pins);
+        uint64_t ppi_pins = (pins & Z80_PIN_MASK) | I8255_CS;
+        if (pins & Z80_A0) { ppi_pins |= I8255_A0; }
+        if (pins & Z80_A1) { ppi_pins |= I8255_A1; }
+        if (pins & Z80_RD) { ppi_pins |= I8255_RD; }
+        if (pins & Z80_WR) { ppi_pins |= I8255_WR; }
+		return i8255_iorq(&mz800.ppi, ppi_pins) & Z80_PIN_MASK;
     }
     // CTC i8253, programmable counter/timer
     else if (IN_RANGE(address, 0xd4, 0xd7)) {
