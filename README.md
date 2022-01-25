@@ -8,13 +8,15 @@ SHARP MZ-800 Emulator using Andre Weissflog's https://github.com/floooh/chips em
 
 **NOTE:** This project has just been started, so don't expect anything useful yet.
 
+You can drop MZF files onto the emulator window to load and run them.
+
 Build and run (exact versions of tools don't matter):
 
 ```bash
 > python --version
-Python 2.7.10
+Python 2.*
 > cmake --version
-cmake version 3.10.0
+cmake version 3.*
 > ./fips build
 ...
 > ./fips list targets
@@ -46,12 +48,6 @@ To open project in IDE:
 ```bash
 # on OSX with Xcode:
 > ./fips set config osx-xcode-debug
-> ./fips gen
-> ./fips open
-
-# on OSX with Xcode for creating unit tests using XCTest:
-# (Coverage logging not enabled, you need to edit scheme in Xcode to enable)
-> ./fips set config osx-xcode-xctest
 > ./fips gen
 > ./fips open
 
