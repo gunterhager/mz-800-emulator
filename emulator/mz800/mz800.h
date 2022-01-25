@@ -117,7 +117,7 @@ const uint32_t mz800_mem_banks[9] = {
 void mz800_init(mz800_t* sys);
 void mz800_reset(mz800_t* sys);
 void mz800_init_memory_mapping(mz800_t* sys);
-void mz800_update_memory_mapping(mz800_t* sys, uint64_t pins);
+uint64_t mz800_update_memory_mapping(mz800_t* sys, uint64_t cpu_pins);
 uint32_t mz800_exec(mz800_t* sys, uint32_t micro_seconds);
 
 static uint64_t mz800_cpu_tick(mz800_t* sys, uint64_t cpu_pins);
@@ -186,8 +186,8 @@ void mz800_init_memory_mapping(mz800_t* sys) {
 
  @param pins Z80 pins with IO request for bank switching.
  */
-void mz800_update_memory_mapping(mz800_t* sys, uint64_t pins) {
-	uint64_t pins_to_check = pins & (Z80_RD | Z80_WR | Z80_IORQ | 0xff);
+uint64_t mz800_update_memory_mapping(mz800_t* sys, uint64_t cpu_pins) {
+	uint64_t pins_to_check = cpu_pins & (Z80_RD | Z80_WR | Z80_IORQ | 0xff);
 
 	switch (pins_to_check) {
 
@@ -252,6 +252,7 @@ void mz800_update_memory_mapping(mz800_t* sys, uint64_t pins) {
 		CHIPS_ASSERT(NOT_IMPLEMENTED);
 		break;
 	}
+	return cpu_pins;
 }
 
 uint32_t mz800_exec(mz800_t* sys, uint32_t micro_seconds) {
@@ -341,12 +342,11 @@ static uint64_t mz800_cpu_iorq(mz800_t* sys, uint64_t cpu_pins) {
 	}
 	// GDG WHID 65040-032, CRT controller
 	else if (IN_RANGE(address, 0xcc, 0xcf)) {
-		gdg_whid65040_032_tick(&sys->gdg, cpu_pins);
+		cpu_pins = gdg_whid65040_032_tick(&sys->gdg, cpu_pins);
 	}
 	// PPI i8255, keyboard and cassette driver
 	else if (IN_RANGE(address, 0xd0, 0xd3)) {
-		// TODO: not implemented
-		CHIPS_ASSERT(NOT_IMPLEMENTED);
+		cpu_pins = i8255_tick(&sys->ppi, cpu_pins);
 	}
 	// CTC i8253, programmable counter/timer
 	else if (IN_RANGE(address, 0xd4, 0xd7)) {
@@ -362,7 +362,7 @@ static uint64_t mz800_cpu_iorq(mz800_t* sys, uint64_t cpu_pins) {
 	else if (IN_RANGE(address, 0xe0, 0xe6)) {
 		// Currently this isn't supported by the GDG emulation,
 		// so we do the bank switch directly here.
-		mz800_update_memory_mapping(sys, cpu_pins);
+		cpu_pins = mz800_update_memory_mapping(sys, cpu_pins);
 	}
 	// Joystick (read only)
 	else if ((cpu_pins & Z80_RD) && (IN_RANGE(address, 0xf0, 0xf1))) {
@@ -371,7 +371,7 @@ static uint64_t mz800_cpu_iorq(mz800_t* sys, uint64_t cpu_pins) {
 	}
 	// GDG WHID 65040-032, Palette register (write only)
 	else if ((cpu_pins & Z80_WR) && (address == 0xf0)) {
-		gdg_whid65040_032_tick(&sys->gdg, cpu_pins);
+		cpu_pins = gdg_whid65040_032_tick(&sys->gdg, cpu_pins);
 	}
 	// PSG SN 76489 AN, sound generator
 	else if (address == 0xf2) {
@@ -385,8 +385,7 @@ static uint64_t mz800_cpu_iorq(mz800_t* sys, uint64_t cpu_pins) {
 	}
 	// PIO Z80 PIO, parallel I/O unit
 	else if (IN_RANGE(address, 0xfc, 0xff)) {
-		// TODO: not implemented
-		CHIPS_ASSERT(NOT_IMPLEMENTED);
+		cpu_pins = z80pio_tick(&sys->pio, cpu_pins);
 	}
 	// DEBUG
 	else {
