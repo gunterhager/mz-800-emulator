@@ -60,14 +60,14 @@ void app_init() {
 		.emu_aspect_y = 2
 	});
 
-	keybuf_init(&(keybuf_desc_t) { .key_delay_frames=7 });
+	keybuf_init(&(keybuf_desc_t) { .key_delay_frames = 7 });
     clock_init();
 	prof_init();
     saudio_setup(&(saudio_desc){0});
     fs_init();
     
     mz800_init(&state.mz800);
-    
+
 	bool delay_input = false;
 	if (sargs_exists("file")) {
 		delay_input = true;

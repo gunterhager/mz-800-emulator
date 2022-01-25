@@ -266,6 +266,15 @@ uint64_t gdg_whid65040_032_iorq(gdg_whid65040_032_t* gdg, uint64_t pins) {
 		// Border color register
 		else if (address == 0x06cf) {
 			gdg->bcol = Z80_GET_DATA(pins) & 0x0f; // Only the lower nibble can be set
+			// Look up color value
+			uint32_t mz_color = mz800_colors[gdg->bcol];
+			// Convert ABGR color into sg_color
+			sg_color color = (sg_color) {
+				.r = (float)(0xff & mz_color),
+				.g = (float)(0xff & (mz_color >> 8)),
+				.b = (float)(0xff & (mz_color >> 16))
+			};
+			gfx_set_border(color);
 		}
 		// Superimpose bit
 		else if (address == 0x07cf) {

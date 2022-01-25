@@ -9,6 +9,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include "sokol_gfx.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -38,6 +39,7 @@ void gfx_update_texture(void* h, void* data, int data_byte_size);
 void gfx_destroy_texture(void* h);
 void gfx_flash_success(void);
 void gfx_flash_error(void);
+void gfx_set_border(sg_color color);
 
 #ifdef __cplusplus
 } /* extern "C" */
@@ -46,7 +48,6 @@ void gfx_flash_error(void);
 /*== IMPLEMENTATION ==========================================================*/
 #ifdef COMMON_IMPL
 
-#include "sokol_gfx.h"
 #include "sokol_app.h"
 #include "sokol_debugtext.h"
 #include "sokol_gl.h"
@@ -94,6 +95,7 @@ typedef struct {
     } icon;
     int flash_success_count;
     int flash_error_count;
+	sg_color border_color;
     
     uint32_t rgba8_buffer[GFX_MAX_FB_WIDTH * GFX_MAX_FB_HEIGHT];
     void (*draw_extra_cb)(void);
@@ -198,6 +200,11 @@ void gfx_flash_success(void) {
 void gfx_flash_error(void) {
     assert(gfx.valid);
     gfx.flash_error_count = 20;
+}
+
+void gfx_set_border(sg_color color) {
+	assert(gfx.valid);
+	gfx.border_color = color;
 }
 
 uint32_t* gfx_framebuffer(void) {
@@ -469,6 +476,7 @@ void gfx_draw(int emu_width, int emu_height) {
     else {
         gfx.display.pass_action.colors[0].value.r = 0.05f;
         gfx.display.pass_action.colors[0].value.g = 0.05f;
+		gfx.display.pass_action.colors[0].value = gfx.border_color;
     }
 
     // draw the final pass with linear filtering
