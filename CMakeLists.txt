@@ -2,6 +2,9 @@
 # project: MZ-800-Emulator
 #
 cmake_minimum_required(VERSION 3.0)
+set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13" CACHE STRING "")
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_C_STANDARD 99)
 project(MZ-800-Emulator)
 
 # include the fips main cmake file
@@ -23,4 +26,6 @@ endif()
 
 fips_ide_group(emulator)
 fips_add_subdirectory(emulator)
+fips_ide_group(tools)
+add_subdirectory(tools)
 fips_finish()

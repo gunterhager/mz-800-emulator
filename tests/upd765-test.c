@@ -29,22 +29,31 @@ static uint8_t rd(void) {
 }
 
 static int seek_track(int drive, int track, void* user_data) {
+    (void)user_data;
     assert((drive >= 0) && (drive < 4));
     cur_track[drive] = track;
     return UPD765_RESULT_SUCCESS;
 }
 
-static int seek_sector(int drive, upd765_sectorinfo_t* inout_info, void* user_data) {
+static int seek_sector(int drive, int side, upd765_sectorinfo_t* inout_info, void* user_data) {
     // FIXME
+    (void)drive;
+    (void)side;
+    (void)inout_info;
+    (void)user_data;
     return UPD765_RESULT_SUCCESS;
 }
 
-static int read_data(int drive, uint8_t h, void* user_data, uint8_t* out_data) {
+static int read_data(int drive, int side, void* user_data, uint8_t* out_data) {
+    (void)drive;
+    (void)side;
+    (void)user_data;
     *out_data = 0;
     return UPD765_RESULT_SUCCESS;
 }
 
 static int trackinfo(int drive, int side, void* user_data, upd765_sectorinfo_t* out_info) {
+    (void)user_data;
     out_info->physical_track = cur_track[drive];
     out_info->c = cur_track[drive];
     out_info->h = side;
@@ -56,6 +65,7 @@ static int trackinfo(int drive, int side, void* user_data, upd765_sectorinfo_t* 
 }
 
 static void driveinfo(int drive, void* user_data, upd765_driveinfo_t* out_info) {
+    (void)user_data;
     out_info->physical_track = cur_track[drive];
     out_info->sides = 1;
     out_info->head = 0;

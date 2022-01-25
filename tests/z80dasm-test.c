@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------
 //  z80dasm-test.c
 //------------------------------------------------------------------------------
-#define CHIPS_IMPL
+#define CHIPS_UTIL_IMPL
 #include "util/z80dasm.h"
 #include "utest.h"
 #include <string.h>
@@ -29,6 +29,7 @@ static void init(uint16_t pc, const uint8_t* ptr, size_t len) {
 }
 
 static uint8_t in_cb(void* user_data) {
+    (void)user_data;
     if (ctx.ptr < ctx.end_ptr) {
         return *ctx.ptr++;
     }
@@ -38,6 +39,7 @@ static uint8_t in_cb(void* user_data) {
 }
 
 static void out_cb(char c, void* user_data) {
+    (void)user_data;
     if ((ctx.str_pos + 1) < sizeof(ctx.str)) {
         ctx.str[ctx.str_pos++] = c;
         ctx.str[ctx.str_pos] = 0;
@@ -2036,9 +2038,9 @@ UTEST(z80dasm, JP_JR) {
     TOP("JP 0214H");
     TOP("JR 0218H");
     TOP("JR 0212H");
-    TOP("JP IX");
-    TOP("JP HL");
-    TOP("JP IY");
+    TOP("JP (IX)");
+    TOP("JP (HL)");
+    TOP("JP (IY)");
     TOP("JR 0223H");
     TOP("NOP");
     TOP("NOP");

@@ -11,6 +11,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "chips/z80.h"
+#include "mz800.h"
 
 /// File attribute for CMT (cassette tapes)
 enum mzf_attribute {
@@ -29,7 +30,7 @@ typedef struct {
     uint8_t comment[104]; // comment, mostly unused
 } mzf_header;
 
-bool mzf_load(const uint8_t *ptr, uint16_t num_bytes, z80_t *cpu, uint8_t *mem) {
+bool mzf_load(const uint8_t *ptr, uint16_t num_bytes, mz800_t *sys, uint8_t *mem) {
     if (ptr == NULL) {
         return false;
     }
@@ -50,7 +51,7 @@ bool mzf_load(const uint8_t *ptr, uint16_t num_bytes, z80_t *cpu, uint8_t *mem) 
     uint8_t *dst = mem + hdr->loading_address;
     
     memcpy(dst, ptr, hdr->file_length);
-    z80_reset(cpu);
-    z80_set_pc(cpu, hdr->start_address);
+    z80_reset(&sys->cpu);
+	sys->pins = z80_prefetch(&sys->cpu, hdr->start_address);
     return true;
 }
