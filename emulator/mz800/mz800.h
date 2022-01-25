@@ -8,6 +8,7 @@
 
 #include "chips/z80.h"
 #include "chips/z80pio.h"
+#include "chips/i8255.h"
 #include "chips/clk.h"
 #include "chips/kbd.h"
 #include "chips/mem.h"
@@ -47,9 +48,14 @@ typedef struct {
     z80_t cpu;
     
     // PPI i8255, keyboard and cassette driver
+	i8255_t ppi;
+
     // CTC i8253, programmable counter/timer
+
     // PIO Z80 PIO, parallel I/O unit
-    // PSG SN 76489 AN, sound generator
+	z80pio_t pio;
+
+	// PSG SN 76489 AN, sound generator
     
     // GDG WHID 65040-032, CRT controller
     gdg_whid65040_032_t gdg;
@@ -145,6 +151,8 @@ void mz800_init(mz800_t* sys) {
 
 	// Initialize hardware
 	sys->pins = z80_init(&sys->cpu);
+	z80pio_init(&sys->pio);
+	i8255_init(&sys->ppi);
 	gdg_whid65040_032_init(&sys->gdg, dump_mz800_cgrom_bin, gfx_framebuffer());
 	mem_init(&sys->mem);
 	mz800_init_memory_mapping(sys);
@@ -153,8 +161,10 @@ void mz800_init(mz800_t* sys) {
 void mz800_reset(mz800_t* sys) {
 	CHIPS_ASSERT(sys && sys->valid);
 	mem_unmap_all(&sys->mem);
-	gdg_whid65040_032_reset(&sys->gdg);
 	sys->pins = z80_reset(&sys->cpu);
+	z80pio_reset(&sys->pio);
+	i8255_reset(&sys->ppi);
+	gdg_whid65040_032_reset(&sys->gdg);
 }
 
 /**
@@ -331,7 +341,7 @@ static uint64_t mz800_cpu_iorq(mz800_t* sys, uint64_t cpu_pins) {
 	}
 	// GDG WHID 65040-032, CRT controller
 	else if (IN_RANGE(address, 0xcc, 0xcf)) {
-		gdg_whid65040_032_iorq(&sys->gdg, cpu_pins);
+		gdg_whid65040_032_tick(&sys->gdg, cpu_pins);
 	}
 	// PPI i8255, keyboard and cassette driver
 	else if (IN_RANGE(address, 0xd0, 0xd3)) {
@@ -361,7 +371,7 @@ static uint64_t mz800_cpu_iorq(mz800_t* sys, uint64_t cpu_pins) {
 	}
 	// GDG WHID 65040-032, Palette register (write only)
 	else if ((cpu_pins & Z80_WR) && (address == 0xf0)) {
-		gdg_whid65040_032_iorq(&sys->gdg, cpu_pins);
+		gdg_whid65040_032_tick(&sys->gdg, cpu_pins);
 	}
 	// PSG SN 76489 AN, sound generator
 	else if (address == 0xf2) {

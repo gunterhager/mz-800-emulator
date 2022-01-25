@@ -121,7 +121,6 @@ typedef struct {
 
 void gdg_whid65040_032_init(gdg_whid65040_032_t* gdg, uint8_t *cgrom, uint32_t *rgba8_buffer);
 void gdg_whid65040_032_reset(gdg_whid65040_032_t* gdg);
-uint64_t gdg_whid65040_032_iorq(gdg_whid65040_032_t* gdg, uint64_t pins);
 uint64_t gdg_whid65040_032_tick(gdg_whid65040_032_t *gdg, uint64_t pins);
 
 uint8_t gdg_whid65040_032_mem_rd(gdg_whid65040_032_t* gdg, uint16_t addr);
@@ -203,10 +202,16 @@ void gdg_whid65040_032_reset(gdg_whid65040_032_t* gdg) {
 	memset(gdg, 0, sizeof(*gdg));
 }
 
+static uint64_t _gdg_whid65040_032_iorq(gdg_whid65040_032_t* gdg, uint64_t pins);
+
+uint64_t gdg_whid65040_032_tick(gdg_whid65040_032_t *gdg, uint64_t pins) {
+	return _gdg_whid65040_032_iorq(gdg, pins);
+}
+
 /**
  Perform an IORQ machine cycle
  */
-uint64_t gdg_whid65040_032_iorq(gdg_whid65040_032_t* gdg, uint64_t pins) {
+static uint64_t _gdg_whid65040_032_iorq(gdg_whid65040_032_t* gdg, uint64_t pins) {
 	uint64_t outpins = pins;
 	if ((pins & (GDG_IORQ | GDG_M1)) != GDG_IORQ) {
 		return outpins;
@@ -302,11 +307,6 @@ uint64_t gdg_whid65040_032_iorq(gdg_whid65040_032_t* gdg, uint64_t pins) {
 	}
 
 	return outpins;
-}
-
-uint64_t gdg_whid65040_032_tick(gdg_whid65040_032_t *gdg, uint64_t pins) {
-#warning "TODO: Implement tick function"
-	return pins;
 }
 
 #pragma mark - VRAM
