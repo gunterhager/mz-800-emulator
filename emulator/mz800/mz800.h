@@ -324,8 +324,7 @@ uint32_t mz800_exec(mz800_t* sys, uint32_t micro_seconds) {
 		// run with debug hook
 		for (uint32_t tick = 0; (tick < num_ticks) && !(*sys->debug.stopped); tick++) {
 			pins = mz800_cpu_tick(sys, pins);
-#warning "FIXME: fix debug callback"
-//			sys->debug.callback.func(sys->debug.callback.user_data, pins);
+			sys->debug.callback.func(sys->debug.callback.user_data, pins);
 		}
 	}
 	sys->pins = pins;

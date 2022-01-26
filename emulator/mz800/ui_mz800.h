@@ -184,19 +184,21 @@ static const ui_chip_pin_t _ui_mz800_ppi_pins[] = {
 
 // MARK: - Memory
 
-#define _UI_MZ800_MEMLAYER_NUM (4)
+#define _UI_MZ800_MEMLAYER_NUM (6)
 static const char* _ui_mz800_memlayer_names[_UI_MZ800_MEMLAYER_NUM] = {
-	"ROM 1", "CG ROM", "ROM 2", "RAM"
+	"CPU visible", "ROM 1", "CG ROM", "ROM 2", "RAM", "VRAM"
 };
 
 static uint8_t _ui_mz800_mem_read(int layer, uint16_t addr, void* user_data) {
 	CHIPS_ASSERT(user_data);
-	mz800_t* mz800 = (mz800_t*) user_data;
+	ui_mz800_t* ui_mz800 = (ui_mz800_t*) user_data;
+	mz800_t* mz800 = ui_mz800->mz800;
 	if (layer == 0) {
 		return mem_rd(&mz800->mem, addr);
 	}
 	else {
-		return mem_layer_rd(&mz800->mem, layer-1, addr);
+		return 0xff;
+//		return mem_layer_rd(&mz800->mem, layer-1, addr);
 	}
 }
 
@@ -207,7 +209,8 @@ static void _ui_mz800_mem_write(int layer, uint16_t addr, uint8_t data, void* us
 		mem_wr(&mz800->mem, addr, data);
 	}
 	else {
-		mem_layer_wr(&mz800->mem, layer-1, addr, data);
+		return;
+//		mem_layer_wr(&mz800->mem, layer-1, addr, data);
 	}
 }
 

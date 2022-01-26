@@ -19,7 +19,7 @@ extern "C" {
 
 #define NOT_IMPLEMENTED false
 
-#define VRAMSIZE (640 * 200)
+#define GDG_VRAMSIZE (640 * 200)
 
 typedef struct {
 	uint8_t *cgrom;             // Character ROM
@@ -73,7 +73,7 @@ typedef struct {
 	/// should be used for that character.
 	/// In MZ-800 Mode: one byte for each pixel, we need only 4 bit per pixel.
 	/// Each bit corresponds to a pixel on planes I, II, III, IV.
-	uint8_t vram[VRAMSIZE];
+	uint8_t vram[GDG_VRAMSIZE];
 
 	/// CGROM contains bitmapped character shapes.
 	uint8_t *cgrom;
