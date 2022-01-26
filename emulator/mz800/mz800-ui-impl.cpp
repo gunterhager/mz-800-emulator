@@ -28,4 +28,4 @@
 #include "ui/ui_i8255.h"
 #include "ui/ui_audio.h"
 #include "ui/ui_kbd.h"
-
+#include "ui_mz800.h"

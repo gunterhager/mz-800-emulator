@@ -73,29 +73,29 @@ typedef struct {
 } mz800_desc_t;
 
 typedef struct {
-    
-    // CPU Z80A
-    z80_t cpu;
-    
-    // PPI i8255, keyboard and cassette driver
+
+	// CPU Z80A
+	z80_t cpu;
+
+	// PPI i8255, keyboard and cassette driver
 	i8255_t ppi;
 
-    // CTC i8253, programmable counter/timer
+	// CTC i8253, programmable counter/timer
 
-    // PIO Z80 PIO, parallel I/O unit
+	// PIO Z80 PIO, parallel I/O unit
 	z80pio_t pio;
 
 	// PSG SN 76489 AN, sound generator
-    
-    // GDG WHID 65040-032, CRT controller
-    gdg_whid65040_032_t gdg;
-    
-    // Keyboard
-    kbd_t kbd;
-    
-    // Memory
-    mem_t mem;
-    
+
+	// GDG WHID 65040-032, CRT controller
+	gdg_whid65040_032_t gdg;
+
+	// Keyboard
+	kbd_t kbd;
+
+	// Memory
+	mem_t mem;
+
 	uint64_t pins;
 	bool valid;
 	mz800_debug_t debug;
@@ -108,20 +108,20 @@ typedef struct {
 	} audio;
 
 	// ROM
-    uint8_t rom1[0x1000];  // 0x0000-0x0fff
-    uint8_t cgrom[0x1000]; // 0x1000-0x1fff
-    uint8_t rom2[0x2000];  // 0xe000-0xffff
-    
-    // VRAM
-    // 0x8000-0xbfff VRAM not mapped here, emulated by the GDG
-    bool vram_banked_in;
-    
-    // RAM (64K)
-    uint8_t dram[0x10000]; // 0x0000-0xffff
-    
-    // HALT callback
-    void (*halt_cb)(z80_t *cpu);
-    
+	uint8_t rom1[0x1000];  // 0x0000-0x0fff
+	uint8_t cgrom[0x1000]; // 0x1000-0x1fff
+	uint8_t rom2[0x2000];  // 0xe000-0xffff
+
+	// VRAM
+	// 0x8000-0xbfff VRAM not mapped here, emulated by the GDG
+	bool vram_banked_in;
+
+	// RAM (64K)
+	uint8_t dram[0x10000]; // 0x0000-0xffff
+
+	// HALT callback
+	void (*halt_cb)(z80_t *cpu);
+
 } mz800_t;
 
 #define I(a) ((a) | Z80_RD | Z80_IORQ)
@@ -145,6 +145,7 @@ const uint32_t mz800_mem_banks[9] = {
 };
 
 void mz800_init(mz800_t* sys, mz800_desc_t* desc);
+void mz800_discard(mz800_t* sys);
 void mz800_reset(mz800_t* sys);
 void mz800_init_memory_mapping(mz800_t* sys, mz800_desc_t* desc);
 uint64_t mz800_update_memory_mapping(mz800_t* sys, uint64_t cpu_pins);
@@ -162,8 +163,8 @@ static uint64_t mz800_cpu_iorq(mz800_t* sys, uint64_t cpu_pins);
 #ifdef CHIPS_IMPL
 #include <string.h>
 #ifndef CHIPS_ASSERT
-	#include <assert.h>
-	#define CHIPS_ASSERT(c) assert(c)
+#include <assert.h>
+#define CHIPS_ASSERT(c) assert(c)
 #endif
 
 #define NOT_IMPLEMENTED false
@@ -197,6 +198,11 @@ void mz800_init(mz800_t* sys, mz800_desc_t* desc) {
 	gdg_whid65040_032_init(&sys->gdg, &gdg_desc);
 	mem_init(&sys->mem);
 	mz800_init_memory_mapping(sys, desc);
+}
+
+void mz800_discard(mz800_t* sys) {
+	CHIPS_ASSERT(sys && sys->valid);
+	sys->valid = false;
 }
 
 void mz800_reset(mz800_t* sys) {
@@ -241,65 +247,65 @@ uint64_t mz800_update_memory_mapping(mz800_t* sys, uint64_t cpu_pins) {
 	switch (pins_to_check) {
 
 		case O(0xe0):
-		mem_map_ram(&sys->mem, 0, 0x0000, 0x2000, sys->dram);
-		break;
+			mem_map_ram(&sys->mem, 0, 0x0000, 0x2000, sys->dram);
+			break;
 
 		case O(0xe1):
-		if (sys->gdg.is_mz700) {
-			mem_map_ram(&sys->mem, 0, 0xd000, 0x3000, sys->dram + 0xd000);
-		} else {
-			mem_map_ram(&sys->mem, 0, 0xe000, 0x2000, sys->dram + 0xe000);
-		}
-		break;
+			if (sys->gdg.is_mz700) {
+				mem_map_ram(&sys->mem, 0, 0xd000, 0x3000, sys->dram + 0xd000);
+			} else {
+				mem_map_ram(&sys->mem, 0, 0xe000, 0x2000, sys->dram + 0xe000);
+			}
+			break;
 
 		case O(0xe2):
 			mem_map_rom(&sys->mem, 0, 0x0000, 0x1000, sys->rom1);
-		break;
+			break;
 
 		case O(0xe3):
-		// Special treatment in MZ-700: VRAM in 0xd000-0xdfff, Key, Timer in 0xe000-0xe070
-		// This isn't handled by regular memory mapping
-		if (sys->gdg.is_mz700) {
-			sys->vram_banked_in = true;
-		}
+			// Special treatment in MZ-700: VRAM in 0xd000-0xdfff, Key, Timer in 0xe000-0xe070
+			// This isn't handled by regular memory mapping
+			if (sys->gdg.is_mz700) {
+				sys->vram_banked_in = true;
+			}
 			mem_map_rom(&sys->mem, 0, 0xe000, 0x2000, sys->rom2);
-		break;
+			break;
 
 		case O(0xe4):
 			mem_map_rom(&sys->mem, 0, 0x0000, 0x1000, sys->rom1);
-		if (!sys->gdg.is_mz700) {
-			mem_map_rom(&sys->mem, 0, 0x1000, 0x1000, sys->cgrom);
-		}
+			if (!sys->gdg.is_mz700) {
+				mem_map_rom(&sys->mem, 0, 0x1000, 0x1000, sys->cgrom);
+			}
 			sys->vram_banked_in = true;
 			mem_map_rom(&sys->mem, 0, 0xe000, 0x2000, sys->rom2);
-		break;
+			break;
 
 		case O(0xe5):
-		// ROM prohibited mode; not sure if i need to support this.
-		// PROHIBIT not implemented
-		CHIPS_ASSERT(NOT_IMPLEMENTED);
-		break;
+			// ROM prohibited mode; not sure if i need to support this.
+			// PROHIBIT not implemented
+			CHIPS_ASSERT(NOT_IMPLEMENTED);
+			break;
 
 		case O(0xe6):
-		// ROM return to previous state mode; not sure if i need to support this.
-		// RETURN not implemented
-		CHIPS_ASSERT(NOT_IMPLEMENTED);
-		break;
+			// ROM return to previous state mode; not sure if i need to support this.
+			// RETURN not implemented
+			CHIPS_ASSERT(NOT_IMPLEMENTED);
+			break;
 
 		case I(0xe0):
-		mem_map_rom(&sys->mem, 0, 0x1000, 0x1000, sys->cgrom);
+			mem_map_rom(&sys->mem, 0, 0x1000, 0x1000, sys->cgrom);
 			sys->vram_banked_in = true;
-		break;
+			break;
 
 		case I(0xe1):
-		mem_map_ram(&sys->mem, 0, 0x1000, 0x1000, sys->dram + 0x1000);
+			mem_map_ram(&sys->mem, 0, 0x1000, 0x1000, sys->dram + 0x1000);
 			sys->vram_banked_in = false;
-		break;
+			break;
 
 		default:
-		// Should never happen.
-		CHIPS_ASSERT(NOT_IMPLEMENTED);
-		break;
+			// Should never happen.
+			CHIPS_ASSERT(NOT_IMPLEMENTED);
+			break;
 	}
 	return cpu_pins;
 }
@@ -318,7 +324,8 @@ uint32_t mz800_exec(mz800_t* sys, uint32_t micro_seconds) {
 		// run with debug hook
 		for (uint32_t tick = 0; (tick < num_ticks) && !(*sys->debug.stopped); tick++) {
 			pins = mz800_cpu_tick(sys, pins);
-			sys->debug.callback.func(sys->debug.callback.user_data, pins);
+#warning "FIXME: fix debug callback"
+//			sys->debug.callback.func(sys->debug.callback.user_data, pins);
 		}
 	}
 	sys->pins = pins;

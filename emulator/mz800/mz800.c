@@ -32,6 +32,7 @@
 	#include "ui/ui_i8255.h"
 	#include "ui/ui_audio.h"
 	#include "ui/ui_kbd.h"
+	#include "ui_mz800.h"
 #endif
 
 static struct {
@@ -39,13 +40,19 @@ static struct {
 	uint32_t frame_time_us;
 	uint32_t ticks;
 	double emu_time_ms;
+#if defined(CHIPS_USE_UI)
+	ui_mz800_t ui_mz800;
+#endif
 } state;
 
+#ifdef CHIPS_USE_UI
+#define BORDER_TOP (24)
+#else
 #define BORDER_TOP (8)
+#endif
 #define BORDER_LEFT (8)
 #define BORDER_RIGHT (8)
 #define BORDER_BOTTOM (32)
-
 
 // MARK: - Function declarations
 
@@ -67,9 +74,36 @@ static void push_audio(const float* samples, int num_samples, void* user_data) {
 
 // MARK: - App
 
+mz800_desc_t mz800_desc() {
+	return (mz800_desc_t) {
+		.pixel_buffer = { .ptr = gfx_framebuffer(), .size = gfx_framebuffer_size() },
+		.audio = {
+			.callback = { .func = push_audio },
+			.sample_rate = saudio_sample_rate(),
+		},
+		.roms = {
+			.rom1 = { .ptr = dump_mz800_rom1_bin, .size = sizeof(dump_mz800_rom1_bin) },
+			.cgrom = { .ptr = dump_mz800_cgrom_bin, .size = sizeof(dump_mz800_cgrom_bin) },
+			.rom2 = { .ptr = dump_mz800_rom2_bin, .size = sizeof(dump_mz800_rom2_bin) },
+		},
+		#if defined(CHIPS_USE_UI)
+		.debug = ui_mz800_get_debug(&state.ui_mz800),
+		#endif
+	};
+}
+
+#if defined(CHIPS_USE_UI)
+void ui_draw_cb(void) {
+	ui_mz800_draw(&state.ui_mz800);
+}
+#endif
+
 /* one-time application init */
 void app_init() {
 	gfx_init(&(gfx_desc_t){
+		#ifdef CHIPS_USE_UI
+		.draw_extra_cb = ui_draw,
+		#endif
 		.border_left = BORDER_LEFT,
 		.border_right = BORDER_RIGHT,
 		.border_top = BORDER_TOP,
@@ -83,19 +117,25 @@ void app_init() {
     saudio_setup(&(saudio_desc){0});
     fs_init();
 
-	mz800_desc_t desc = (mz800_desc_t) {
-		.pixel_buffer = { .ptr = gfx_framebuffer(), .size = gfx_framebuffer_size() },
-		.audio = {
-			.callback = { .func = push_audio },
-			.sample_rate = saudio_sample_rate(),
-		},
-		.roms = {
-			.rom1 = { .ptr = dump_mz800_rom1_bin, .size = sizeof(dump_mz800_rom1_bin) },
-			.cgrom = { .ptr = dump_mz800_cgrom_bin, .size = sizeof(dump_mz800_cgrom_bin) },
-			.rom2 = { .ptr = dump_mz800_rom2_bin, .size = sizeof(dump_mz800_rom2_bin) },
-		}
-	};
+	mz800_desc_t desc = mz800_desc();
     mz800_init(&state.mz800, &desc);
+#ifdef CHIPS_USE_UI
+	ui_init(ui_draw_cb);
+	ui_mz800_init(&state.ui_mz800, &(ui_mz800_desc_t){
+		.mz800 = &state.mz800,
+		.create_texture_cb = gfx_create_texture,
+		.update_texture_cb = gfx_update_texture,
+		.destroy_texture_cb = gfx_destroy_texture,
+		.dbg_keys = {
+			.cont = { .keycode = SAPP_KEYCODE_F5, .name = "F5" },
+			.stop = { .keycode = SAPP_KEYCODE_F5, .name = "F5" },
+			.step_over = { .keycode = SAPP_KEYCODE_F6, .name = "F6" },
+			.step_into = { .keycode = SAPP_KEYCODE_F7, .name = "F7" },
+			.step_tick = { .keycode = SAPP_KEYCODE_F8, .name = "F8" },
+			.toggle_breakpoint = { .keycode = SAPP_KEYCODE_F9, .name = "F9" }
+		}
+	});
+#endif
 
 	bool delay_input = false;
 	if (sargs_exists("file")) {
@@ -135,12 +175,22 @@ void app_input(const sapp_event* event) {
 	if (event->type == SAPP_EVENTTYPE_FILES_DROPPED) {
 		fs_start_load_dropped_file();
 	}
-
-    // TODO: Keyboard input handling
+#ifdef CHIPS_USE_UI
+	if (ui_input(event)) {
+		// input was handled by UI
+		return;
+	}
+#endif
+	// TODO: Keyboard input handling
 }
 
 /* application cleanup callback */
 void app_cleanup() {
+	mz800_discard(&state.mz800);
+#ifdef CHIPS_USE_UI
+	ui_mz800_discard(&state.ui_mz800);
+	ui_discard();
+#endif
     saudio_shutdown();
     gfx_shutdown();
     sargs_shutdown();
