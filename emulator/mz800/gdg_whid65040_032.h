@@ -11,6 +11,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -19,6 +20,13 @@ extern "C" {
 #define NOT_IMPLEMENTED false
 
 #define VRAMSIZE (640 * 200)
+
+typedef struct {
+	uint8_t *cgrom;             // Character ROM
+	uint32_t* rgba8_buffer;     // pointer to the RGBA8 output framebuffer
+	size_t rgba8_buffer_size;
+} gdg_whid65040_032_desc_t;
+
 /// GDG WHID 65040-032 state
 typedef struct {
 	/// Write format register
@@ -119,7 +127,7 @@ typedef struct {
 /* merge 8-bit data bus value into 64-bit pins */
 #define GDG_SET_DATA(p,d) {p=((p&~0xFF0000)|((d&0xFF)<<16));}
 
-void gdg_whid65040_032_init(gdg_whid65040_032_t* gdg, uint8_t *cgrom, uint32_t *rgba8_buffer);
+void gdg_whid65040_032_init(gdg_whid65040_032_t* gdg, gdg_whid65040_032_desc_t* desc);
 void gdg_whid65040_032_reset(gdg_whid65040_032_t* gdg);
 uint64_t gdg_whid65040_032_tick(gdg_whid65040_032_t *gdg, uint64_t pins);
 
@@ -187,11 +195,11 @@ const uint32_t mz800_colors[16] = {
  @param cgrom Pointer to character ROM.
  @param rgba8_buffer RBGA8 buffer to display color graphics.
  */
-void gdg_whid65040_032_init(gdg_whid65040_032_t* gdg, uint8_t *cgrom, uint32_t *rgba8_buffer) {
-	CHIPS_ASSERT(gdg);
+void gdg_whid65040_032_init(gdg_whid65040_032_t* gdg, gdg_whid65040_032_desc_t* desc) {
+	CHIPS_ASSERT(gdg && desc);
 	gdg_whid65040_032_reset(gdg);
-	gdg->cgrom = cgrom;
-	gdg->rgba8_buffer = rgba8_buffer;
+	gdg->cgrom = desc->cgrom;
+	gdg->rgba8_buffer = desc->rgba8_buffer;
 }
 
 /**

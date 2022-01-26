@@ -3,16 +3,17 @@ find_package(XCTest REQUIRED)
 
 fips_begin_app(MZ-800-Emulator windowed)
     fips_vs_warning_level(3)
-    fips_files(mz800.c mz800.h)
+    fips_files(mz800.c mz800.h mz800-ui-impl.cpp)
     fips_files(mzf.h)
     fips_files(gdg_whid65040_032.h)
     if (FIPS_IOS)
         fips_files(ios-info.plist)
     endif()
-    fips_deps(roms common)
+    fips_deps(roms common ui)
 fips_end_app()
+target_compile_definitions(MZ-800-Emulator PRIVATE CHIPS_USE_UI)
 
-# add unit tests using XCTest
+# add unit tests using XCTest (this does work currently)
 if (FIPS_OSX AND OSX_XCTEST)
     set(RESOURCE_FILES
     XCTests/assets/TestHalt.mzf

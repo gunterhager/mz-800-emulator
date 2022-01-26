@@ -13,7 +13,6 @@
 #include "chips/kbd.h"
 #include "chips/mem.h"
 #include "gdg_whid65040_032.h"
-#include "../roms/mz800-roms.h"
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -41,6 +40,37 @@ typedef struct {
 	} callback;
 	bool* stopped;
 } mz800_debug_t;
+
+typedef struct {
+	const void* ptr;
+	size_t size;
+} mz800_rom_image_t;
+
+// configuration parameters for mz800_init()
+typedef struct {
+	mz800_debug_t debug;
+
+	// video output config
+	struct {
+		void* ptr;              // pointer to a linear RGBA8 pixel buffer
+		size_t size;            // size of the pixel buffer in bytes
+	} pixel_buffer;
+
+	// audio output config (if you don't want audio, set callback.func to zero)
+	struct {
+		mz800_audio_callback_t callback;  // called when audio_num_samples are ready */
+		int num_samples;                  // default is MZ800_DEFAULT_AUDIO_SAMPLES
+		int sample_rate;                  // playback sample rate, default is 44100
+		float volume;                     // audio volume: 0.0..1.0, default is 0.25
+	} audio;
+
+	// ROM images
+	struct {
+		mz800_rom_image_t rom1;
+		mz800_rom_image_t rom2;
+		mz800_rom_image_t cgrom; // Character ROM
+	} roms;
+} mz800_desc_t;
 
 typedef struct {
     
@@ -78,9 +108,9 @@ typedef struct {
 	} audio;
 
 	// ROM
-//    uint8_t rom1[0x1000];  // 0x0000-0x0fff
-//    uint8_t cgrom[0x1000]; // 0x1000-0x1fff
-//    uint8_t rom2[0x2000];  // 0xe000-0xffff
+    uint8_t rom1[0x1000];  // 0x0000-0x0fff
+    uint8_t cgrom[0x1000]; // 0x1000-0x1fff
+    uint8_t rom2[0x2000];  // 0xe000-0xffff
     
     // VRAM
     // 0x8000-0xbfff VRAM not mapped here, emulated by the GDG
@@ -114,9 +144,9 @@ const uint32_t mz800_mem_banks[9] = {
 	O(0xe6)  // | x      | x      | x      | RETURN | // Return to previous state
 };
 
-void mz800_init(mz800_t* sys);
+void mz800_init(mz800_t* sys, mz800_desc_t* desc);
 void mz800_reset(mz800_t* sys);
-void mz800_init_memory_mapping(mz800_t* sys);
+void mz800_init_memory_mapping(mz800_t* sys, mz800_desc_t* desc);
 uint64_t mz800_update_memory_mapping(mz800_t* sys, uint64_t cpu_pins);
 uint32_t mz800_exec(mz800_t* sys, uint32_t micro_seconds);
 
@@ -143,19 +173,30 @@ static uint64_t mz800_cpu_iorq(mz800_t* sys, uint64_t cpu_pins);
 #define MZ800_DISP_WIDTH (640)
 #define MZ800_DISP_HEIGHT (200)
 
+#define _MZ800_DEFAULT(val,def) (((val) != 0) ? (val) : (def))
+
 // MARK: - MZ-800 specific functions
 
-void mz800_init(mz800_t* sys) {
-	CHIPS_ASSERT(sys);
+void mz800_init(mz800_t* sys, mz800_desc_t* desc) {
+	CHIPS_ASSERT(sys && desc);
 	sys->valid = true;
+	sys->debug = desc->debug;
+	sys->audio.callback = desc->audio.callback;
+	sys->audio.num_samples = _MZ800_DEFAULT(desc->audio.num_samples, MZ800_DEFAULT_AUDIO_SAMPLES);
+	CHIPS_ASSERT(sys->audio.num_samples <= MZ800_MAX_AUDIO_SAMPLES);
 
 	// Initialize hardware
 	sys->pins = z80_init(&sys->cpu);
 	z80pio_init(&sys->pio);
 	i8255_init(&sys->ppi);
-	gdg_whid65040_032_init(&sys->gdg, dump_mz800_cgrom_bin, gfx_framebuffer());
+	gdg_whid65040_032_desc_t gdg_desc = (gdg_whid65040_032_desc_t) {
+		.cgrom = sys->cgrom,
+		.rgba8_buffer = desc->pixel_buffer.ptr,
+		.rgba8_buffer_size = desc->pixel_buffer.size
+	};
+	gdg_whid65040_032_init(&sys->gdg, &gdg_desc);
 	mem_init(&sys->mem);
-	mz800_init_memory_mapping(sys);
+	mz800_init_memory_mapping(sys, desc);
 }
 
 void mz800_reset(mz800_t* sys) {
@@ -170,15 +211,23 @@ void mz800_reset(mz800_t* sys) {
 /**
  Setup the initial memory mapping with ROM1, CGROM and ROM2, the rest is DRAM.
  */
-void mz800_init_memory_mapping(mz800_t* sys) {
+void mz800_init_memory_mapping(mz800_t* sys, mz800_desc_t* desc) {
+	// Copy ROMs
+	CHIPS_ASSERT(desc->roms.rom1.ptr && (desc->roms.rom1.size == 0x1000));
+	CHIPS_ASSERT(desc->roms.cgrom.ptr && (desc->roms.cgrom.size == 0x1000));
+	CHIPS_ASSERT(desc->roms.rom2.ptr && (desc->roms.rom2.size == 0x2000));
+	memcpy(sys->rom1, desc->roms.rom1.ptr, 0x1000);
+	memcpy(sys->cgrom, desc->roms.cgrom.ptr, 0x1000);
+	memcpy(sys->rom2, desc->roms.rom2.ptr, 0x2000);
+
 	// According to SHARP Service Manual
-	mem_map_rom(&sys->mem, 0, 0x0000, 0x1000, dump_mz800_rom1_bin);
-	mem_map_ram(&sys->mem, 0, 0x1000, 0x1000, dump_mz800_cgrom_bin); // Character ROM
+	mem_map_rom(&sys->mem, 0, 0x0000, 0x1000, sys->rom1);
+	mem_map_ram(&sys->mem, 0, 0x1000, 0x1000, sys->cgrom); // Character ROM
 	mem_map_ram(&sys->mem, 0, 0x2000, 0x6000, sys->dram + 0x2000);
 	sys->vram_banked_in = true;
 	mem_map_ram(&sys->mem, 0, 0x8000, 0x4000, sys->dram + 0x8000); // VRAM isn't handled by regular memory mapping
 	mem_map_ram(&sys->mem, 0, 0xc000, 0x2000, sys->dram + 0xc000);
-	mem_map_rom(&sys->mem, 0, 0xe000, 0x2000, dump_mz800_rom2_bin);
+	mem_map_rom(&sys->mem, 0, 0xe000, 0x2000, sys->rom2);
 }
 
 /**
@@ -204,7 +253,7 @@ uint64_t mz800_update_memory_mapping(mz800_t* sys, uint64_t cpu_pins) {
 		break;
 
 		case O(0xe2):
-			mem_map_rom(&sys->mem, 0, 0x0000, 0x1000, dump_mz800_rom1_bin);
+			mem_map_rom(&sys->mem, 0, 0x0000, 0x1000, sys->rom1);
 		break;
 
 		case O(0xe3):
@@ -213,16 +262,16 @@ uint64_t mz800_update_memory_mapping(mz800_t* sys, uint64_t cpu_pins) {
 		if (sys->gdg.is_mz700) {
 			sys->vram_banked_in = true;
 		}
-			mem_map_rom(&sys->mem, 0, 0xe000, 0x2000, dump_mz800_rom2_bin);
+			mem_map_rom(&sys->mem, 0, 0xe000, 0x2000, sys->rom2);
 		break;
 
 		case O(0xe4):
-			mem_map_rom(&sys->mem, 0, 0x0000, 0x1000, dump_mz800_rom1_bin);
+			mem_map_rom(&sys->mem, 0, 0x0000, 0x1000, sys->rom1);
 		if (!sys->gdg.is_mz700) {
-			mem_map_rom(&sys->mem, 0, 0x1000, 0x1000, dump_mz800_cgrom_bin);
+			mem_map_rom(&sys->mem, 0, 0x1000, 0x1000, sys->cgrom);
 		}
 			sys->vram_banked_in = true;
-			mem_map_rom(&sys->mem, 0, 0xe000, 0x2000, dump_mz800_rom2_bin);
+			mem_map_rom(&sys->mem, 0, 0xe000, 0x2000, sys->rom2);
 		break;
 
 		case O(0xe5):
@@ -238,7 +287,7 @@ uint64_t mz800_update_memory_mapping(mz800_t* sys, uint64_t cpu_pins) {
 		break;
 
 		case I(0xe0):
-		mem_map_rom(&sys->mem, 0, 0x1000, 0x1000, dump_mz800_cgrom_bin);
+		mem_map_rom(&sys->mem, 0, 0x1000, 0x1000, sys->cgrom);
 			sys->vram_banked_in = true;
 		break;
 

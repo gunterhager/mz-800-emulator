@@ -9,6 +9,7 @@
 #define CHIPS_IMPL
 #include "chips/z80.h"
 #include "chips/z80pio.h"
+#include "chips/i8255.h"
 #include "chips/clk.h"
 #include "chips/kbd.h"
 #include "chips/mem.h"
@@ -16,6 +17,22 @@
 #include "mzf.h"
 #include "gdg_whid65040_032.h"
 #include "mz800.h"
+#include "../roms/mz800-roms.h"
+
+#if defined(CHIPS_USE_UI)
+	#define UI_DBG_USE_Z80
+	#include "ui.h"
+	#include "ui/ui_chip.h"
+	#include "ui/ui_memedit.h"
+	#include "ui/ui_memmap.h"
+	#include "ui/ui_dasm.h"
+	#include "ui/ui_dbg.h"
+	#include "ui/ui_z80.h"
+	#include "ui/ui_z80pio.h"
+	#include "ui/ui_i8255.h"
+	#include "ui/ui_audio.h"
+	#include "ui/ui_kbd.h"
+#endif
 
 static struct {
 	mz800_t mz800;
@@ -65,8 +82,20 @@ void app_init() {
 	prof_init();
     saudio_setup(&(saudio_desc){0});
     fs_init();
-    
-    mz800_init(&state.mz800);
+
+	mz800_desc_t desc = (mz800_desc_t) {
+		.pixel_buffer = { .ptr = gfx_framebuffer(), .size = gfx_framebuffer_size() },
+		.audio = {
+			.callback = { .func = push_audio },
+			.sample_rate = saudio_sample_rate(),
+		},
+		.roms = {
+			.rom1 = { .ptr = dump_mz800_rom1_bin, .size = sizeof(dump_mz800_rom1_bin) },
+			.cgrom = { .ptr = dump_mz800_cgrom_bin, .size = sizeof(dump_mz800_cgrom_bin) },
+			.rom2 = { .ptr = dump_mz800_rom2_bin, .size = sizeof(dump_mz800_rom2_bin) },
+		}
+	};
+    mz800_init(&state.mz800, &desc);
 
 	bool delay_input = false;
 	if (sargs_exists("file")) {
