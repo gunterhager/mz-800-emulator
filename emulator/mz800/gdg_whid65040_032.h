@@ -19,7 +19,8 @@ extern "C" {
 
 #define NOT_IMPLEMENTED false
 
-#define GDG_VRAMSIZE (640 * 200)
+#define GDG_PALETTE_SIZE (4)
+#define GDG_VRAM_SIZE (640 * 200)
 
 typedef struct {
 	uint8_t *cgrom;             // Character ROM
@@ -57,12 +58,16 @@ typedef struct {
 
 	/// Border color register
 	uint8_t bcol;
+	/// RGBA8 version of the border color. Used only for debug rendering
+	uint32_t bcol_rgba8;
 
 	/// Superimpose bit
 	uint8_t cksw;
 
 	/// Palette registers
-	uint8_t plt[4];
+	uint8_t plt[GDG_PALETTE_SIZE];
+	/// RGBA8 version of the palette. Used only for debug rendering.
+	uint32_t plt_rgba8[GDG_PALETTE_SIZE];
 	/// Palette switch register (for 16 color mode)
 	uint8_t plt_sw;
 
@@ -73,7 +78,7 @@ typedef struct {
 	/// should be used for that character.
 	/// In MZ-800 Mode: one byte for each pixel, we need only 4 bit per pixel.
 	/// Each bit corresponds to a pixel on planes I, II, III, IV.
-	uint8_t vram[GDG_VRAMSIZE];
+	uint8_t vram[GDG_VRAM_SIZE];
 
 	/// CGROM contains bitmapped character shapes.
 	uint8_t *cgrom;
@@ -94,6 +99,7 @@ typedef struct {
 	/// Indicates if machine is in MZ-700 mode. This is actually toggled by setting the DMD register.
 	bool is_mz700;
 
+	uint64_t pins;
 } gdg_whid65040_032_t;
 
 /*
@@ -281,6 +287,7 @@ static uint64_t _gdg_whid65040_032_iorq(gdg_whid65040_032_t* gdg, uint64_t pins)
 			gdg->bcol = Z80_GET_DATA(pins) & 0x0f; // Only the lower nibble can be set
 			// Look up color value
 			uint32_t mz_color = mz800_colors[gdg->bcol];
+			gdg->bcol_rgba8 = mz_color;
 			// Convert ABGR color into sg_color
 			sg_color color = (sg_color) {
 				.r = (float)(0xff & mz_color),
@@ -306,6 +313,8 @@ static uint64_t _gdg_whid65040_032_iorq(gdg_whid65040_032_t* gdg, uint64_t pins)
 				uint8_t index = value >> 4; // high 3 bits contain palette register index
 				uint8_t color = value & 0x0f; // lower nibble contains color code in IGRB
 				gdg->plt[index] = color;
+				uint32_t mz_color = mz800_colors[color];
+				gdg->plt_rgba8[index] = mz_color;
 			}
 		}
 		// DEBUG

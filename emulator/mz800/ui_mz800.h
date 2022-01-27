@@ -28,6 +28,7 @@ typedef struct {
 	ui_z80_t cpu;
 	ui_z80pio_t pio;
 	ui_i8255_t ppi;
+	ui_gdg_whid65040_032_t gdg;
 	ui_audio_t audio;
 	ui_kbd_t kbd;
 	ui_memmap_t memmap;
@@ -182,6 +183,9 @@ static const ui_chip_pin_t _ui_mz800_ppi_pins[] = {
 	{ "PC7",   39,      I8255_PC7 },
 };
 
+static const ui_chip_pin_t _ui_mz800_gdg_pins[] = {
+	{ "-",     0,      0 }, // We don't support showing the chips pinout
+};
 // MARK: - Memory
 
 #define _UI_MZ800_MEMLAYER_NUM (6)
@@ -265,6 +269,7 @@ static void _ui_mz800_draw_menu(ui_mz800_t* ui) {
 			ImGui::MenuItem("Z80 (CPU)", 0, &ui->cpu.open);
 			ImGui::MenuItem("Z80 (PIO)", 0, &ui->pio.open);
 			ImGui::MenuItem("i8255 (PPI)", 0, &ui->ppi.open);
+			ImGui::MenuItem("GDG WHID65040 032", 0, &ui->gdg.open);
 			ImGui::EndMenu();
 		}
 		if (ImGui::BeginMenu("Debug")) {
@@ -399,6 +404,16 @@ void ui_mz800_init(ui_mz800_t* ui, const ui_mz800_desc_t* ui_desc) {
 	}
 	x += dx; y += dy;
 	{
+		ui_gdg_whid65040_032_desc_t desc = {0};
+		desc.title = "GDG WHID65040 032";
+		desc.gdg = &ui->mz800->gdg;
+		desc.x = x;
+		desc.y = y;
+		UI_CHIP_INIT_DESC(&desc.chip_desc, "GDG WHID65040 032", 40, _ui_mz800_gdg_pins);
+		ui_gdg_whid65040_032_init(&ui->gdg, &desc);
+	}
+	x += dx; y += dy;
+	{
 		ui_audio_desc_t desc = {0};
 		desc.title = "Audio Output";
 		desc.sample_buffer = ui->mz800->audio.sample_buffer;
@@ -467,6 +482,7 @@ void ui_mz800_discard(ui_mz800_t* ui) {
 	ui_z80_discard(&ui->cpu);
 	ui_z80pio_discard(&ui->pio);
 	ui_i8255_discard(&ui->ppi);
+	ui_gdg_whid65040_032_discard(&ui->gdg);
 	ui_kbd_discard(&ui->kbd);
 	ui_audio_discard(&ui->audio);
 	ui_memmap_discard(&ui->memmap);
@@ -488,6 +504,7 @@ void ui_mz800_draw(ui_mz800_t* ui) {
 	ui_z80_draw(&ui->cpu);
 	ui_z80pio_draw(&ui->pio);
 	ui_i8255_draw(&ui->ppi);
+	ui_gdg_whid65040_032_draw(&ui->gdg);
 	ui_memmap_draw(&ui->memmap);
 	for (int i = 0; i < 4; i++) {
 		ui_memedit_draw(&ui->memedit[i]);

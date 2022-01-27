@@ -30,6 +30,7 @@
 	#include "ui/ui_z80.h"
 	#include "ui/ui_z80pio.h"
 	#include "ui/ui_i8255.h"
+	#include "ui_gdg_whid65040_032.h"
 	#include "ui/ui_audio.h"
 	#include "ui/ui_kbd.h"
 	#include "ui_mz800.h"
