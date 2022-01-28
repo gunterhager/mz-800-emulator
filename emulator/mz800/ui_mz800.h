@@ -193,28 +193,75 @@ static const char* _ui_mz800_memlayer_names[_UI_MZ800_MEMLAYER_NUM] = {
 	"CPU visible", "ROM 1", "CG ROM", "ROM 2", "RAM", "VRAM"
 };
 
-static uint8_t _ui_mz800_mem_read(int layer, uint16_t addr, void* user_data) {
-	CHIPS_ASSERT(user_data);
-	ui_mz800_t* ui_mz800 = (ui_mz800_t*) user_data;
-	mz800_t* mz800 = ui_mz800->mz800;
-	if (layer == 0) {
-		return mem_rd(&mz800->mem, addr);
+static uint8_t _ui_mz800_rom_read(uint8_t* rom, uint16_t start_addr, uint16_t size, uint16_t addr) {
+	if ((addr >= start_addr) && (addr < start_addr + size)) {
+		uint16_t normalized_addr = addr - start_addr;
+		return rom[normalized_addr];
 	}
 	else {
 		return 0xff;
-//		return mem_layer_rd(&mz800->mem, layer-1, addr);
+	}
+}
+
+static uint8_t _ui_mz800_mem_read(int layer, uint16_t addr, void* user_data) {
+	CHIPS_ASSERT(user_data);
+	ui_mz800_t* ui_mz800 = (ui_mz800_t*)user_data;
+	mz800_t* mz800 = ui_mz800->mz800;
+	switch (layer) {
+		case 0: // CPU visible
+			return mem_rd(&mz800->mem, addr);
+			break;
+
+		case 1: // ROM 1
+			return _ui_mz800_rom_read(mz800->rom1, MZ800_ROM1_START, MZ800_ROM1_SIZE, addr);
+
+		case 2: // CGROM
+			return _ui_mz800_rom_read(mz800->cgrom, MZ800_CGROM_START, MZ800_CGROM_SIZE, addr);
+
+		case 3: // ROM 2
+			return _ui_mz800_rom_read(mz800->rom2, MZ800_ROM2_START, MZ800_ROM2_SIZE, addr);
+
+		case 4: // RAM
+			return mz800->dram[addr];
+
+		case 5: // VRAM
+			return gdg_whid65040_032_mem_rd(&mz800->gdg, addr);
+
+		default:
+			return 0xff;
 	}
 }
 
 static void _ui_mz800_mem_write(int layer, uint16_t addr, uint8_t data, void* user_data) {
 	CHIPS_ASSERT(user_data);
-	mz800_t* mz800 = (mz800_t*) user_data;
-	if (layer == 0) {
-		mem_wr(&mz800->mem, addr, data);
-	}
-	else {
-		return;
-//		mem_layer_wr(&mz800->mem, layer-1, addr, data);
+	ui_mz800_t* ui_mz800 = (ui_mz800_t*)user_data;
+	mz800_t* mz800 = ui_mz800->mz800;
+	switch (layer) {
+		case 0: // CPU visible
+			mem_wr(&mz800->mem, addr, data);
+			break;
+			
+		case 1: // ROM 1
+			break;
+
+		case 2: // CGROM
+			break;
+
+		case 3: // ROM 2
+			break;
+
+		case 4: // RAM
+			mz800->dram[addr] = data;
+			break;
+
+		case 5: // VRAM
+			if (addr < MZ800_VRAM_SIZE) {
+				gdg_whid65040_032_mem_wr(&mz800->gdg, addr, data);
+			}
+			break;
+
+		default:
+			break;
 	}
 }
 

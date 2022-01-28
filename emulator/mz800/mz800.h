@@ -72,6 +72,18 @@ typedef struct {
 	} roms;
 } mz800_desc_t;
 
+// Memory sizes and locations
+#define MZ800_ROM1_SIZE   0x1000
+#define MZ800_CGROM_SIZE  0x1000
+#define MZ800_ROM2_SIZE   0x2000
+
+#define MZ800_ROM1_START  0x0000
+#define MZ800_CGROM_START 0x1000
+#define MZ800_ROM2_START  0xe000
+
+#define MZ800_VRAM_START  0x8000
+#define MZ800_VRAM_SIZE   0x8000
+
 typedef struct {
 
 	// CPU Z80A
@@ -108,9 +120,9 @@ typedef struct {
 	} audio;
 
 	// ROM
-	uint8_t rom1[0x1000];  // 0x0000-0x0fff
-	uint8_t cgrom[0x1000]; // 0x1000-0x1fff
-	uint8_t rom2[0x2000];  // 0xe000-0xffff
+	uint8_t rom1[MZ800_ROM1_SIZE];   // 0x0000-0x0fff
+	uint8_t cgrom[MZ800_CGROM_SIZE]; // 0x1000-0x1fff
+	uint8_t rom2[MZ800_ROM2_SIZE];   // 0xe000-0xffff
 
 	// VRAM
 	// 0x8000-0xbfff VRAM not mapped here, emulated by the GDG

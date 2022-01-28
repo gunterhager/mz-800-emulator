@@ -20,7 +20,12 @@ extern "C" {
 #define NOT_IMPLEMENTED false
 
 #define GDG_PALETTE_SIZE (4)
-#define GDG_VRAM_SIZE (640 * 200)
+
+/// Size of the VRAM buffer we use for easier emulation.
+#define GDG_VRAM_BUFFER_SIZE (640 * 200)
+
+/// Size of the physical VRAM in the actual machine.
+#define GDG_VRAM_SIZE 0x8000
 
 typedef struct {
 	uint8_t *cgrom;             // Character ROM
@@ -81,7 +86,7 @@ typedef struct {
 	/// should be used for that character.
 	/// In MZ-800 Mode: one byte for each pixel, we need only 4 bit per pixel.
 	/// Each bit corresponds to a pixel on planes I, II, III, IV.
-	uint8_t vram[GDG_VRAM_SIZE];
+	uint8_t vram[GDG_VRAM_BUFFER_SIZE];
 
 	/// CGROM contains bitmapped character shapes.
 	uint8_t *cgrom;
@@ -403,7 +408,7 @@ uint8_t gdg_whid65040_032_mem_rd(gdg_whid65040_032_t* gdg, uint16_t addr) {
  @param data Byte to write to VRAM. Each bit corresponds to a single pixel.
  */
 void gdg_whid65040_032_mem_wr(gdg_whid65040_032_t* gdg, uint16_t addr, uint8_t data) {
-	CHIPS_ASSERT(gdg);
+	CHIPS_ASSERT(gdg && (addr < GDG_VRAM_SIZE));
 
 	if (gdg->is_mz700 && (gdg->wf == 0x01)) {
 		gdg->vram[addr] = data;
