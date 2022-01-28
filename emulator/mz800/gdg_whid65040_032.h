@@ -45,20 +45,23 @@ typedef struct {
 	/// Display status register
 	uint8_t status;
 
+	/// Scroll Registers need to be set in increments of 0x5.
+	/// Scroll offsets have a range from 0x0 to 0x3e8, stored
+	///  as 10 bit number in two registers SOF1 and SOF2.
 	/// Scroll offset register 1
 	uint8_t sof1;
 	/// Scroll offset register 2
 	uint8_t sof2;
-	/// Scroll width register
+	/// Scroll width register (0x0 to 0x7d)
 	uint8_t sw;
-	/// Scroll start address register
+	/// Scroll start address register (0x0 to 0x78)
 	uint8_t ssa;
-	/// Scroll end address register
+	/// Scroll end address register (0x5 to 0x7d)
 	uint8_t sea;
 
 	/// Border color register
 	uint8_t bcol;
-	/// RGBA8 version of the border color. Used only for debug rendering
+	/// RGBA8 version of the border color.
 	uint32_t bcol_rgba8;
 
 	/// Superimpose bit
