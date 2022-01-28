@@ -85,6 +85,7 @@ typedef struct {
 
 	/// RGBA8 buffer for displaying color graphics on screen.
 	uint32_t *rgba8_buffer;
+	size_t rgba8_buffer_size;
 
 	// Private status properties
 
@@ -191,7 +192,10 @@ const uint32_t mz800_colors[16] = {
 	COLOR_IGRB_TO_ABGR(1, 1, 1, 1)  // 1111 light white
 };
 
-#pragma mark - Life cycle
+static uint64_t _gdg_whid65040_032_iorq(gdg_whid65040_032_t* gdg, uint64_t pins);
+void _gdg_whid65040_032_update_border(gdg_whid65040_032_t* gdg);
+
+// MARK: - Life cycle
 
 /**
  Call this once to initialize a new GDG WHID 65040-032 instance, this will
@@ -203,9 +207,11 @@ const uint32_t mz800_colors[16] = {
  */
 void gdg_whid65040_032_init(gdg_whid65040_032_t* gdg, gdg_whid65040_032_desc_t* desc) {
 	CHIPS_ASSERT(gdg && desc);
-	gdg_whid65040_032_reset(gdg);
+	// Set the CGROM and RGBA8 buffer pointers prior to reset
 	gdg->cgrom = desc->cgrom;
 	gdg->rgba8_buffer = desc->rgba8_buffer;
+	gdg->rgba8_buffer_size = desc->rgba8_buffer_size;
+	gdg_whid65040_032_reset(gdg);
 }
 
 /**
@@ -213,19 +219,41 @@ void gdg_whid65040_032_init(gdg_whid65040_032_t* gdg, gdg_whid65040_032_desc_t* 
  */
 void gdg_whid65040_032_reset(gdg_whid65040_032_t* gdg) {
 	CHIPS_ASSERT(gdg);
-	memset(gdg, 0, sizeof(*gdg));
-}
 
-static uint64_t _gdg_whid65040_032_iorq(gdg_whid65040_032_t* gdg, uint64_t pins);
+	// Save pointers
+	uint8_t *cgrom = gdg->cgrom;
+	uint32_t *rgba8_buffer = gdg->rgba8_buffer;
+	size_t rgba8_buffer_size = gdg->rgba8_buffer_size;
+
+	// Reset
+	memset(gdg, 0, sizeof(*gdg));
+
+	// Restore pointers
+	gdg->cgrom = cgrom;
+	gdg->rgba8_buffer = rgba8_buffer;
+	gdg->rgba8_buffer_size = rgba8_buffer_size;
+
+	// Reset RGBA8 buffer
+	if (gdg->rgba8_buffer) {
+		memset(gdg->rgba8_buffer, 0, gdg->rgba8_buffer_size);
+	}
+
+	// Reset border
+	_gdg_whid65040_032_update_border(gdg);
+}
 
 uint64_t gdg_whid65040_032_tick(gdg_whid65040_032_t *gdg, uint64_t pins) {
+	CHIPS_ASSERT(gdg);
 	return _gdg_whid65040_032_iorq(gdg, pins);
 }
+
+// MARK: - IO request
 
 /**
  Perform an IORQ machine cycle
  */
 static uint64_t _gdg_whid65040_032_iorq(gdg_whid65040_032_t* gdg, uint64_t pins) {
+	CHIPS_ASSERT(gdg);
 	uint64_t outpins = pins;
 	if ((pins & (GDG_IORQ | GDG_M1)) != GDG_IORQ) {
 		return outpins;
@@ -285,16 +313,7 @@ static uint64_t _gdg_whid65040_032_iorq(gdg_whid65040_032_t* gdg, uint64_t pins)
 		// Border color register
 		else if (address == 0x06cf) {
 			gdg->bcol = Z80_GET_DATA(pins) & 0x0f; // Only the lower nibble can be set
-			// Look up color value
-			uint32_t mz_color = mz800_colors[gdg->bcol];
-			gdg->bcol_rgba8 = mz_color;
-			// Convert ABGR color into sg_color
-			sg_color color = (sg_color) {
-				.r = (float)(0xff & mz_color),
-				.g = (float)(0xff & (mz_color >> 8)),
-				.b = (float)(0xff & (mz_color >> 16))
-			};
-			gfx_set_border(color);
+			_gdg_whid65040_032_update_border(gdg);
 		}
 		// Superimpose bit
 		else if (address == 0x07cf) {
@@ -326,7 +345,23 @@ static uint64_t _gdg_whid65040_032_iorq(gdg_whid65040_032_t* gdg, uint64_t pins)
 	return outpins;
 }
 
-#pragma mark - VRAM
+// MARK: - Border color
+
+void _gdg_whid65040_032_update_border(gdg_whid65040_032_t* gdg) {
+	CHIPS_ASSERT(gdg);
+	// Look up color value
+	uint32_t mz_color = mz800_colors[gdg->bcol];
+	gdg->bcol_rgba8 = mz_color;
+	// Convert ABGR color into sg_color
+	sg_color color = (sg_color) {
+		.r = (float)(0xff & mz_color),
+		.g = (float)(0xff & (mz_color >> 8)),
+		.b = (float)(0xff & (mz_color >> 16))
+	};
+	gfx_set_border(color);
+}
+
+// MARK: - VRAM
 
 /**
  Read a byte from VRAM. The meaning of the bits in the byte depend on
@@ -337,6 +372,7 @@ static uint64_t _gdg_whid65040_032_iorq(gdg_whid65040_032_t* gdg, uint64_t pins)
  @return Returns a byte of information about the VRAM contents.
  */
 uint8_t gdg_whid65040_032_mem_rd(gdg_whid65040_032_t* gdg, uint16_t addr) {
+	CHIPS_ASSERT(gdg);
 
 	if (gdg->is_mz700 && (gdg->rf == 0x01)) {
 		return gdg->vram[addr];
@@ -364,6 +400,7 @@ uint8_t gdg_whid65040_032_mem_rd(gdg_whid65040_032_t* gdg, uint16_t addr) {
  @param data Byte to write to VRAM. Each bit corresponds to a single pixel.
  */
 void gdg_whid65040_032_mem_wr(gdg_whid65040_032_t* gdg, uint16_t addr, uint8_t data) {
+	CHIPS_ASSERT(gdg);
 
 	if (gdg->is_mz700 && (gdg->wf == 0x01)) {
 		gdg->vram[addr] = data;
@@ -430,6 +467,7 @@ void gdg_whid65040_032_mem_wr(gdg_whid65040_032_t* gdg, uint16_t addr, uint8_t d
  @param value Value to write into the register.
  */
 void gdg_whid65040_032_set_wf(gdg_whid65040_032_t* gdg, uint8_t value) {
+	CHIPS_ASSERT(gdg);
 	gdg->wf = value;
 
 	// MZ-700 mode
@@ -482,6 +520,7 @@ void gdg_whid65040_032_set_wf(gdg_whid65040_032_t* gdg, uint8_t value) {
  @param value Value to write into the register.
  */
 void gdg_whid65040_032_set_rf(gdg_whid65040_032_t* gdg, uint8_t value) {
+	CHIPS_ASSERT(gdg);
 	gdg->rf = value;
 	bool use_frame_b = value & 0x10;
 
@@ -490,7 +529,7 @@ void gdg_whid65040_032_set_rf(gdg_whid65040_032_t* gdg, uint8_t value) {
 }
 
 
-#pragma mark - Display mode
+// MARK: - Display mode
 
 /**
  Sets the display mode register.
@@ -499,6 +538,7 @@ void gdg_whid65040_032_set_rf(gdg_whid65040_032_t* gdg, uint8_t value) {
  @param value Value to write into the register.
  */
 void gdg_whid65040_032_set_dmd(gdg_whid65040_032_t* gdg, uint8_t value) {
+	CHIPS_ASSERT(gdg);
 	uint8_t old_dmd = gdg->dmd;
 	gdg->dmd = value;
 
@@ -513,7 +553,7 @@ void gdg_whid65040_032_set_dmd(gdg_whid65040_032_t* gdg, uint8_t value) {
 	}
 }
 
-#pragma mark - Decoding VRAM
+// MARK: - Decoding VRAM
 
 /**
  Decode one byte of VRAM into the RGBA8 buffer.
@@ -522,6 +562,7 @@ void gdg_whid65040_032_set_dmd(gdg_whid65040_032_t* gdg, uint8_t value) {
  @param addr Address in the VRAM to decode from. VRAM addresses start from 0x0000 here.
  */
 void gdg_whid65040_032_decode_vram(gdg_whid65040_032_t* gdg, uint16_t addr) {
+	CHIPS_ASSERT(gdg);
 	if (gdg->is_mz700) {
 		gdg_whid65040_032_decode_vram_mz700(gdg, addr);
 	} else {
@@ -536,6 +577,7 @@ void gdg_whid65040_032_decode_vram(gdg_whid65040_032_t* gdg, uint16_t addr) {
  @param addr Address in the VRAM to decode from. VRAM addresses start from 0x0000 here.
  */
 void gdg_whid65040_032_decode_vram_mz700(gdg_whid65040_032_t* gdg, uint16_t addr) {
+	CHIPS_ASSERT(gdg);
 	// Convert addr to address offsets in character VRAM and color VRAM
 	// Character range: 0x0000 - 0x03f7
 	uint16_t character_code_addr = (addr >= 0x0800) ? addr - 0x0800 : addr;
@@ -596,6 +638,7 @@ void gdg_whid65040_032_decode_vram_mz700(gdg_whid65040_032_t* gdg, uint16_t addr
  @param addr Address in the VRAM to decode from. VRAM addresses start from 0x0000 here.
  */
 void gdg_whid65040_032_decode_vram_mz800(gdg_whid65040_032_t* gdg, uint16_t addr) {
+	CHIPS_ASSERT(gdg);
 	// Setup
 	uint8_t *plane_ptr = gdg->vram + addr * 8;
 	bool hires = gdg->dmd & 0x04; // 640x200 if set

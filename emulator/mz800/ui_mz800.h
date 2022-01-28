@@ -262,6 +262,13 @@ static void _ui_mz800_update_memmap(ui_mz800_t* ui) {
 static void _ui_mz800_draw_menu(ui_mz800_t* ui) {
 	CHIPS_ASSERT(ui && ui->mz800);
 	if (ImGui::BeginMainMenuBar()) {
+		if (ImGui::BeginMenu("System")) {
+			if (ImGui::MenuItem("Hard Reset")) {
+				mz800_reset(ui->mz800);
+				ui_dbg_reset(&ui->dbg);
+			}
+			ImGui::EndMenu();
+		}
 		if (ImGui::BeginMenu("Hardware")) {
 			ImGui::MenuItem("Memory Map", 0, &ui->memmap.open);
 			ImGui::MenuItem("Keyboard Matrix", 0, &ui->kbd.open);

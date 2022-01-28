@@ -147,7 +147,8 @@ const uint32_t mz800_mem_banks[9] = {
 void mz800_init(mz800_t* sys, mz800_desc_t* desc);
 void mz800_discard(mz800_t* sys);
 void mz800_reset(mz800_t* sys);
-void mz800_init_memory_mapping(mz800_t* sys, mz800_desc_t* desc);
+void mz800_init_roms(mz800_t* sys, mz800_desc_t* desc);
+void mz800_init_memory_mapping(mz800_t* sys);
 uint64_t mz800_update_memory_mapping(mz800_t* sys, uint64_t cpu_pins);
 uint32_t mz800_exec(mz800_t* sys, uint32_t micro_seconds);
 
@@ -197,7 +198,8 @@ void mz800_init(mz800_t* sys, mz800_desc_t* desc) {
 	};
 	gdg_whid65040_032_init(&sys->gdg, &gdg_desc);
 	mem_init(&sys->mem);
-	mz800_init_memory_mapping(sys, desc);
+	mz800_init_roms(sys, desc);
+	mz800_init_memory_mapping(sys);
 }
 
 void mz800_discard(mz800_t* sys) {
@@ -207,24 +209,33 @@ void mz800_discard(mz800_t* sys) {
 
 void mz800_reset(mz800_t* sys) {
 	CHIPS_ASSERT(sys && sys->valid);
+	// Reset memory
 	mem_unmap_all(&sys->mem);
-	sys->pins = z80_reset(&sys->cpu);
+	memset(sys->dram, 0, sizeof(sys->dram));
+	mz800_init_memory_mapping(sys);
+
+	// Reset chips
 	z80pio_reset(&sys->pio);
 	i8255_reset(&sys->ppi);
 	gdg_whid65040_032_reset(&sys->gdg);
+	sys->pins = z80_reset(&sys->cpu);
 }
 
-/**
- Setup the initial memory mapping with ROM1, CGROM and ROM2, the rest is DRAM.
- */
-void mz800_init_memory_mapping(mz800_t* sys, mz800_desc_t* desc) {
-	// Copy ROMs
+void mz800_init_roms(mz800_t* sys, mz800_desc_t* desc) {
+	CHIPS_ASSERT(sys && desc);
 	CHIPS_ASSERT(desc->roms.rom1.ptr && (desc->roms.rom1.size == 0x1000));
 	CHIPS_ASSERT(desc->roms.cgrom.ptr && (desc->roms.cgrom.size == 0x1000));
 	CHIPS_ASSERT(desc->roms.rom2.ptr && (desc->roms.rom2.size == 0x2000));
 	memcpy(sys->rom1, desc->roms.rom1.ptr, 0x1000);
 	memcpy(sys->cgrom, desc->roms.cgrom.ptr, 0x1000);
 	memcpy(sys->rom2, desc->roms.rom2.ptr, 0x2000);
+}
+
+/**
+ Setup the initial memory mapping with ROM1, CGROM and ROM2, the rest is DRAM.
+ */
+void mz800_init_memory_mapping(mz800_t* sys) {
+	CHIPS_ASSERT(sys);
 
 	// According to SHARP Service Manual
 	mem_map_rom(&sys->mem, 0, 0x0000, 0x1000, sys->rom1);

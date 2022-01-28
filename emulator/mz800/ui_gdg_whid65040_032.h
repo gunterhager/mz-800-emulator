@@ -1,3 +1,4 @@
+#pragma once
 //
 //  ui_gdg_whid65040_032.h
 //  MZ-800-Emulator
@@ -177,32 +178,17 @@ static void _ui_gdg_whid65040_032_draw_palette(ui_gdg_whid65040_032_t* win) {
 			ImGui::SameLine();
 		}
 	}
+	ImGui::Text("PLT SW  %02X", gdg->plt_sw);
 }
 
-//static void _ui_am40010_draw_registers(ui_am40010_t* win) {
-//	am40010_registers_t* r = &win->am40010->regs;
-//	ImGui::Text("INKSEL %02X", r->inksel);
-//	ImGui::Text("BORDER %02X", r->border);
-//	ImGui::Text("INK   "); ImGui::SameLine();
-//	for (int i = 0; i < 16; i++) {
-//		ImGui::Text("%02X", r->ink[i]);
-//		if (((i+1) % 8) != 0) {
-//			ImGui::SameLine();
-//		}
-//		else if (i < 15) {
-//			ImGui::Text("      "); ImGui::SameLine();
-//		}
-//	}
-//	ImGui::Text("CONFIG %02X", r->config);
-//	ImGui::Text("  Mode     %d", r->config & 3);
-//	ImGui::Text("  LoROM    %s", (r->config & AM40010_CONFIG_LROMEN) ? "ON":"OFF");
-//	ImGui::Text("  HiROM    %s", (r->config & AM40010_CONFIG_HROMEN) ? "ON":"OFF");
-//	ImGui::Text("  IRQRes   %s", (r->config & AM40010_CONFIG_IRQRESET) ? "ON":"OFF");
-//}
-
+static void _ui_gdg_whid65040_032_draw_planes(ui_gdg_whid65040_032_t* win) {
+	gdg_whid65040_032_t* gdg = win->gdg;
+	ImGui::Text("WRITE   %02X", gdg->write_planes);
+	ImGui::Text("RESET   %02X", gdg->reset_planes);
+	ImGui::Text("READ    %02X", gdg->read_planes);
+}
 
 static void _ui_gdg_whid65040_032_draw_state(ui_gdg_whid65040_032_t* win) {
-	gdg_whid65040_032_t* gdg = win->gdg;
 	if (ImGui::CollapsingHeader("Registers", ImGuiTreeNodeFlags_DefaultOpen)) {
 		_ui_gdg_whid65040_032_draw_registers(win);
 	}
@@ -213,37 +199,9 @@ static void _ui_gdg_whid65040_032_draw_state(ui_gdg_whid65040_032_t* win) {
 		_ui_gdg_whid65040_032_draw_border_color(win);
 		_ui_gdg_whid65040_032_draw_palette(win);
 	}
-	if (ImGui::CollapsingHeader("Planes", ImGuiTreeNodeFlags_DefaultOpen)) {
+	if (ImGui::CollapsingHeader("Plane Masks", ImGuiTreeNodeFlags_DefaultOpen)) {
+		_ui_gdg_whid65040_032_draw_planes(win);
 	}
-//	ImGui::Columns(5, "##gdg_ports", false);
-//	ImGui::SetColumnWidth(0, 64);
-//	ImGui::SetColumnWidth(1, 32);
-//	ImGui::SetColumnWidth(2, 32);
-//	ImGui::SetColumnWidth(3, 32);
-//	ImGui::SetColumnWidth(4, 32);
-//	ImGui::NextColumn();
-//	ImGui::Text("A"); ImGui::NextColumn();
-//	ImGui::Text("B"); ImGui::NextColumn();
-//	ImGui::Text("CHI"); ImGui::NextColumn();
-//	ImGui::Text("CLO"); ImGui::NextColumn();
-//	ImGui::Separator();
-//	ImGui::Text("Mode"); ImGui::NextColumn();
-//	ImGui::Text("%d", (ppi->control & I8255_CTRL_ACHI_MODE) >> 5); ImGui::NextColumn();
-//	ImGui::Text("%d", (ppi->control & I8255_CTRL_BCLO_MODE) >> 2); ImGui::NextColumn();
-//	ImGui::Text("%d", (ppi->control & I8255_CTRL_ACHI_MODE) >> 5); ImGui::NextColumn();
-//	ImGui::Text("%d", (ppi->control & I8255_CTRL_BCLO_MODE) >> 2); ImGui::NextColumn();
-//	ImGui::Text("In/Out"); ImGui::NextColumn();
-//	ImGui::Text("%s", ((ppi->control & I8255_CTRL_A) == I8255_CTRL_A_INPUT) ? "IN":"OUT"); ImGui::NextColumn();
-//	ImGui::Text("%s", ((ppi->control & I8255_CTRL_B) == I8255_CTRL_B_INPUT) ? "IN":"OUT"); ImGui::NextColumn();
-//	ImGui::Text("%s", ((ppi->control & I8255_CTRL_CHI) == I8255_CTRL_CHI_INPUT) ? "IN":"OUT"); ImGui::NextColumn();
-//	ImGui::Text("%s", ((ppi->control & I8255_CTRL_CLO) == I8255_CTRL_CLO_INPUT) ? "IN":"OUT"); ImGui::NextColumn();
-//	ImGui::Text("Output"); ImGui::NextColumn();
-//	ImGui::Text("%02X", ppi->pa.outp); ImGui::NextColumn();
-//	ImGui::Text("%02X", ppi->pb.outp); ImGui::NextColumn();
-//	ImGui::Text("%X", ppi->pc.outp >> 4); ImGui::NextColumn();
-//	ImGui::Text("%X", ppi->pc.outp & 0xF); ImGui::NextColumn();
-//	ImGui::Columns(); ImGui::Separator();
-//	ImGui::Text("Control: %02X", ppi->control);
 }
 
 void ui_gdg_whid65040_032_draw(ui_gdg_whid65040_032_t* win) {
@@ -254,10 +212,6 @@ void ui_gdg_whid65040_032_draw(ui_gdg_whid65040_032_t* win) {
 	ImGui::SetNextWindowPos(ImVec2(win->init_x, win->init_y), ImGuiCond_Once);
 	ImGui::SetNextWindowSize(ImVec2(win->init_w, win->init_h), ImGuiCond_Once);
 	if (ImGui::Begin(win->title, &win->open)) {
-//		ImGui::BeginChild("##gdg_whid65040_032_chip", ImVec2(176, 0), true);
-//		ui_chip_draw(&win->chip, win->gdg->pins);
-//		ImGui::EndChild();
-//		ImGui::SameLine();
 		ImGui::BeginChild("##gdg_whid65040_032_state", ImVec2(0, 0), true);
 		_ui_gdg_whid65040_032_draw_state(win);
 		ImGui::EndChild();
