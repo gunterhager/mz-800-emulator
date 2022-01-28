@@ -9,7 +9,7 @@ include "MZ800.inc"
 org 02000h
 
 ; Program features
-define ClearScreen
+;define ClearScreen
 define ClearColor
 
 defc DisplayMode = DisplayMode40x25_8ColorMZ700
@@ -47,13 +47,13 @@ ifdef ClearColor
   ; Setup memory addresses for color VRAM
   ld hl, MemoryMZ700VRAMColorStart
   ld de, MemoryMZ700VRAMColorStart + 1
-  ld bc, MemoryMZ700VRAMColorEnd - 1
+  ld bc, MemoryMZ700VRAMColorEnd - MemoryMZ700VRAMColorStart
 
   ; Clear VRAM
   ld (hl), 71h ; clear first byte of VRAM with white foreground, blue background
   ldir ; clear the rest of the VRAM in one loop
 
-  halt
+  ;halt
 
 endif
 

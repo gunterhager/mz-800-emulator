@@ -19,6 +19,24 @@ extern "C" {
 
 #define NOT_IMPLEMENTED false
 
+// MARK: - CRT
+
+// CRT beam tracking
+typedef struct gdg_whid65040_032_crt_t {
+	int pos_x, pos_y;   // current beam position in visible region
+	int sync_count;     // number of ticks since sync raised
+	int h_pos;          // current horizontal pos (0..63)
+	int v_pos;          // current vertical position (0..312)
+	int h_retrace;      // horizontal retrace counter
+	int v_retrace;      // vertical retrace counter
+	bool visible;       // true if beam is currently in visible region
+	bool sync;          // last syns state for sync raise detection
+	bool h_blank;       // true if currently in horizontal blanking
+	bool v_blank;       // true if currently in vertical blanking
+} gdg_whid65040_032_crt_t;
+
+// MARK: - GDG Data types
+
 #define GDG_PALETTE_SIZE (4)
 
 /// Size of the VRAM buffer we use for easier emulation.
@@ -141,6 +159,8 @@ typedef struct {
 #define GDG_GET_DATA(p) ((uint8_t)(p>>16))
 /* merge 8-bit data bus value into 64-bit pins */
 #define GDG_SET_DATA(p,d) {p=((p&~0xFF0000)|((d&0xFF)<<16));}
+
+// MARK: - Functions
 
 void gdg_whid65040_032_init(gdg_whid65040_032_t* gdg, gdg_whid65040_032_desc_t* desc);
 void gdg_whid65040_032_reset(gdg_whid65040_032_t* gdg);

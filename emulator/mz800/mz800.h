@@ -269,10 +269,12 @@ uint64_t mz800_update_memory_mapping(mz800_t* sys, uint64_t cpu_pins) {
 
 	switch (pins_to_check) {
 
+			// DRAM_DRAM_X_X
 		case O(0xe0):
 			mem_map_ram(&sys->mem, 0, 0x0000, 0x2000, sys->dram);
 			break;
 
+			// X_X_X_DRAM
 		case O(0xe1):
 			if (sys->gdg.is_mz700) {
 				mem_map_ram(&sys->mem, 0, 0xd000, 0x3000, sys->dram + 0xd000);
@@ -281,10 +283,12 @@ uint64_t mz800_update_memory_mapping(mz800_t* sys, uint64_t cpu_pins) {
 			}
 			break;
 
+			// ROM1_X_X_X
 		case O(0xe2):
 			mem_map_rom(&sys->mem, 0, 0x0000, 0x1000, sys->rom1);
 			break;
 
+			// X_X_X_ROM2
 		case O(0xe3):
 			// Special treatment in MZ-700: VRAM in 0xd000-0xdfff, Key, Timer in 0xe000-0xe070
 			// This isn't handled by regular memory mapping
@@ -294,6 +298,7 @@ uint64_t mz800_update_memory_mapping(mz800_t* sys, uint64_t cpu_pins) {
 			mem_map_rom(&sys->mem, 0, 0xe000, 0x2000, sys->rom2);
 			break;
 
+			// ROM1_CGROM_VRAM_ROM2
 		case O(0xe4):
 			mem_map_rom(&sys->mem, 0, 0x0000, 0x1000, sys->rom1);
 			if (!sys->gdg.is_mz700) {
