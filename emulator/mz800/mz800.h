@@ -73,16 +73,24 @@ typedef struct {
 } mz800_desc_t;
 
 // Memory sizes and locations
-#define MZ800_ROM1_SIZE   0x1000
-#define MZ800_CGROM_SIZE  0x1000
-#define MZ800_ROM2_SIZE   0x2000
+#define MZ800_ROM1_SIZE     0x1000
+#define MZ800_CGROM_SIZE    0x1000
+#define MZ800_ROM2_SIZE     0x2000
 
-#define MZ800_ROM1_START  0x0000
-#define MZ800_CGROM_START 0x1000
-#define MZ800_ROM2_START  0xe000
+#define MZ800_ROM1_START    0x0000
+#define MZ800_CGROM_START   0x1000
+#define MZ800_ROM2_START    0xe000
 
-#define MZ800_VRAM_START  0x8000
-#define MZ800_VRAM_SIZE   0x8000
+// There are different VRAM addresses for MZ-700 and MZ-800 modes
+#define MZ800_VRAM_START    0x8000
+#define MZ800_VRAM_320_END  0xa000
+#define MZ800_VRAM_640_END  0xc000
+#define MZ800_VRAM_320_SIZE (MZ800_VRAM_320_END - MZ800_VRAM_START)
+#define MZ800_VRAM_640_SIZE (MZ800_VRAM_640_END - MZ800_VRAM_START)
+
+#define MZ700_VRAM_START    0xd000
+#define MZ700_VRAM_END      0xe000
+#define MZ700_VRAM_SIZE     (MZ700_VRAM_END - MZ700_VRAM_START)
 
 typedef struct {
 
@@ -125,7 +133,7 @@ typedef struct {
 	uint8_t rom2[MZ800_ROM2_SIZE];   // 0xe000-0xffff
 
 	// VRAM
-	// 0x8000-0xbfff VRAM not mapped here, emulated by the GDG
+	// VRAM not mapped here, emulated by the GDG
 	bool vram_banked_in;
 
 	// RAM (64K)
@@ -142,6 +150,7 @@ typedef struct {
 // MARK: - Memory layout
 // Memory in the ranges 0x2000-0x7fff, 0xc000-0xdfff are always DRAM
 // The memory bank values below can be used directly as bit mask for Z80 pins.
+// Memory layout differs for MZ-700 mode.
 // | I/O        | 0x0000 | 0x1000 | 0x8000 | 0xe000 |
 // | Address    | 0x0fff | 0x1fff | 0xbfff | 0xffff |
 const uint32_t mz800_mem_banks[9] = {
@@ -277,7 +286,7 @@ uint64_t mz800_update_memory_mapping(mz800_t* sys, uint64_t cpu_pins) {
 			// X_X_X_DRAM
 		case O(0xe1):
 			if (sys->gdg.is_mz700) {
-				mem_map_ram(&sys->mem, 0, 0xd000, 0x3000, sys->dram + 0xd000);
+				mem_map_ram(&sys->mem, 0, MZ700_VRAM_START, 0x3000, sys->dram + MZ700_VRAM_START);
 			} else {
 				mem_map_ram(&sys->mem, 0, 0xe000, 0x2000, sys->dram + 0xe000);
 			}
@@ -360,6 +369,20 @@ uint32_t mz800_exec(mz800_t* sys, uint32_t micro_seconds) {
 	return num_ticks;
 }
 
+static bool _mz800_is_mz700VRAM_addr(mz800_t* sys, uint16_t addr) {
+	if (!sys->vram_banked_in) return false;
+	if (!sys->gdg.is_mz700) return false;
+	return (addr >= MZ700_VRAM_START) && (addr < MZ700_VRAM_END);
+}
+
+static bool _mz800_is_VRAM_addr(mz800_t* sys, uint16_t addr) {
+	if (!sys->vram_banked_in) return false;
+	if (sys->gdg.is_mz700) return false;
+	if (addr < MZ800_VRAM_START) return false;
+	bool is_640 = (sys->gdg.dmd & GDG_DMD_640);
+	return is_640 ? addr < MZ800_VRAM_640_END : MZ800_VRAM_320_END;
+}
+
 static uint64_t mz800_cpu_tick(mz800_t* sys, uint64_t cpu_pins) {
 	cpu_pins = z80_tick(&sys->cpu, cpu_pins);
 
@@ -375,27 +398,28 @@ static uint64_t mz800_cpu_tick(mz800_t* sys, uint64_t cpu_pins) {
 	// Memory request
 	if (cpu_pins & Z80_MREQ) {
 		const uint16_t addr = Z80_GET_ADDR(cpu_pins);
-		if (sys->vram_banked_in // MZ-700 VRAM range
-			&& sys->gdg.is_mz700
-			&& (addr >= 0xd000) && (addr < 0xe000)) {
-			uint16_t vram_addr = addr - 0xd000;
+		// MZ-700 VRAM range
+		if (_mz800_is_mz700VRAM_addr(sys, addr)) {
+			uint16_t vram_addr = addr - MZ700_VRAM_START;
 			if (cpu_pins & Z80_RD) {
 				Z80_SET_DATA(cpu_pins, gdg_whid65040_032_mem_rd(&sys->gdg, vram_addr));
 			}
 			else if (cpu_pins & Z80_WR) {
 				gdg_whid65040_032_mem_wr(&sys->gdg, vram_addr, Z80_GET_DATA(cpu_pins));
 			}
-		} else if (sys->vram_banked_in // MZ-800 VRAM range
-				   && !sys->gdg.is_mz700
-				   && (addr >= 0x8000) && (addr < 0xc000)) {
-			uint16_t vram_addr = addr - 0x8000;
+		}
+		// MZ-800 VRAM range
+		else if (_mz800_is_VRAM_addr(sys, addr)) {
+			uint16_t vram_addr = addr - MZ800_VRAM_START;
 			if (cpu_pins & Z80_RD) {
 				Z80_SET_DATA(cpu_pins, gdg_whid65040_032_mem_rd(&sys->gdg, vram_addr));
 			}
 			else if (cpu_pins & Z80_WR) {
 				gdg_whid65040_032_mem_wr(&sys->gdg, vram_addr, Z80_GET_DATA(cpu_pins));
 			}
-		} else { // other memory
+		}
+		// Other memory
+		else {
 			if (cpu_pins & Z80_RD) {
 				Z80_SET_DATA(cpu_pins, mem_rd(&sys->mem, addr));
 			}

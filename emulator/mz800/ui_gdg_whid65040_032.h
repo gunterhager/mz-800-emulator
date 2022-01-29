@@ -132,17 +132,27 @@ static void _ui_gdg_whid65040_032_draw_registers(ui_gdg_whid65040_032_t* win) {
 	ImGui::Text("MZ Mode: %s", (gdg->is_mz700) ? "MZ-700":"MZ-800");
 
 	ImGui::Text("WF     %02X", gdg->wf); ImGui::SameLine();
-	ImGui::Text(" %s", _ui_gdg_whid65040_032_write_mode(gdg->wf)); ImGui::SameLine();
-	ImGui::Text(" %s", (gdg->rf & (0x1 << 4)) ? "B":"A"); ImGui::SameLine();
-	ImGui::Text(" %s", _ui_gdg_whid65040_032_plane_number(gdg->rf & (0x1 << 3)));  ImGui::SameLine();
-	ImGui::Text(" %s", _ui_gdg_whid65040_032_plane_number(gdg->rf & (0x1 << 2))); ImGui::SameLine();
-	ImGui::Text(" %s", _ui_gdg_whid65040_032_plane_number(gdg->rf & (0x1 << 1))); ImGui::SameLine();
-	ImGui::Text(" %s", _ui_gdg_whid65040_032_plane_number(gdg->rf & 0x1));
+	if (gdg->wf == 0x01) {
+		ImGui::Text(" MZ-700");
+	}
+	else {
+		ImGui::Text(" %s", _ui_gdg_whid65040_032_write_mode(gdg->wf)); ImGui::SameLine();
+		ImGui::Text(" %s", (gdg->rf & (0x1 << 4)) ? "B":"A"); ImGui::SameLine();
+		ImGui::Text(" %s", _ui_gdg_whid65040_032_plane_number(gdg->rf & (0x1 << 3)));  ImGui::SameLine();
+		ImGui::Text(" %s", _ui_gdg_whid65040_032_plane_number(gdg->rf & (0x1 << 2))); ImGui::SameLine();
+		ImGui::Text(" %s", _ui_gdg_whid65040_032_plane_number(gdg->rf & (0x1 << 1))); ImGui::SameLine();
+		ImGui::Text(" %s", _ui_gdg_whid65040_032_plane_number(gdg->rf & 0x1));
+	}
 
 	ImGui::Text("RF     %02X", gdg->rf); ImGui::SameLine();
-	ImGui::Text(" %s", (gdg->rf & (0x1 << 7)) ? "SRCH":"SING"); ImGui::SameLine();
-	ImGui::Text(" %s", (gdg->rf & (0x1 << 4)) ? "B":"A"); ImGui::SameLine();
-	ImGui::Text(" %s", _ui_gdg_whid65040_032_plane_number(gdg->rf));
+	if (gdg->rf == 0x01) {
+		ImGui::Text(" MZ-700");
+	}
+	else {
+		ImGui::Text(" %s", (gdg->rf & (0x1 << 7)) ? "SRCH":"SING"); ImGui::SameLine();
+		ImGui::Text(" %s", (gdg->rf & (0x1 << 4)) ? "B":"A"); ImGui::SameLine();
+		ImGui::Text(" %s", _ui_gdg_whid65040_032_plane_number(gdg->rf));
+	}
 
 	ImGui::Text("DMD    %02X", gdg->dmd); ImGui::SameLine();
 	ImGui::Text(" %s", _ui_gdg_whid65040_032_dmd(gdg->dmd));

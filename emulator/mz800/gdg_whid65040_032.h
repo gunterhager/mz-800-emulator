@@ -43,7 +43,7 @@ typedef struct gdg_whid65040_032_crt_t {
 #define GDG_VRAM_BUFFER_SIZE (640 * 200)
 
 /// Size of the physical VRAM in the actual machine.
-#define GDG_VRAM_SIZE 0x8000
+#define GDG_VRAM_SIZE 0x4000
 
 typedef struct {
 	uint8_t *cgrom;             // Character ROM
@@ -58,7 +58,7 @@ typedef struct {
 	uint8_t wf;
 
 	/// Read format register
-	/// Determines how pixel data is read from VRAM:
+	/// Determines how pixel data is read from VRAM.
 	uint8_t rf;
 
 	/// Display mode register
@@ -66,6 +66,7 @@ typedef struct {
 	uint8_t dmd;
 
 	/// Display status register
+	/// BLNK, SYNC, SW1 Mode switch, TEMPO
 	uint8_t status;
 
 	/// Scroll Registers need to be set in increments of 0x5.
@@ -88,6 +89,7 @@ typedef struct {
 	uint32_t bcol_rgba8;
 
 	/// Superimpose bit
+	/// 0: 50Hz, 1: 60Hz
 	uint8_t cksw;
 
 	/// Palette registers
@@ -159,6 +161,10 @@ typedef struct {
 #define GDG_GET_DATA(p) ((uint8_t)(p>>16))
 /* merge 8-bit data bus value into 64-bit pins */
 #define GDG_SET_DATA(p,d) {p=((p&~0xFF0000)|((d&0xFF)<<16));}
+
+// MARK: - GDG DMD
+
+#define GDG_DMD_640 (1<<2)
 
 // MARK: - Functions
 

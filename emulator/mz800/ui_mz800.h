@@ -225,7 +225,12 @@ static uint8_t _ui_mz800_mem_read(int layer, uint16_t addr, void* user_data) {
 			return mz800->dram[addr];
 
 		case 5: // VRAM
-			return gdg_whid65040_032_mem_rd(&mz800->gdg, addr);
+			if (addr < MZ800_VRAM_640_SIZE) {
+				return mz800->gdg.vram[addr];
+			}
+			else {
+				return 0xff;
+			}
 
 		default:
 			return 0xff;
@@ -255,8 +260,11 @@ static void _ui_mz800_mem_write(int layer, uint16_t addr, uint8_t data, void* us
 			break;
 
 		case 5: // VRAM
-			if (addr < MZ800_VRAM_SIZE) {
-				gdg_whid65040_032_mem_wr(&mz800->gdg, addr, data);
+			if (addr < MZ800_VRAM_640_SIZE) {
+				mz800->gdg.vram[addr] = data;
+				// Since we circumvent the regular VRAM write
+				// we need to decode VRAM into RGB8 buffer
+				gdg_whid65040_032_decode_vram(&mz800->gdg, addr);
 			}
 			break;
 

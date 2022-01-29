@@ -40,6 +40,9 @@ defc PortReadFormatRegister = 0cdh
 
 defc ReadFormatSearch = 010000000b
 
+; The MZ-700 read format is to be used as is.
+defc ReadFormatMZ700       = 000000001b
+
 ;------------------------------------------
 ; Display mode
 
