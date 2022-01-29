@@ -191,13 +191,6 @@ static void _ui_gdg_whid65040_032_draw_palette(ui_gdg_whid65040_032_t* win) {
 	ImGui::Text("PLT SW  %02X", gdg->plt_sw);
 }
 
-static void _ui_gdg_whid65040_032_draw_planes(ui_gdg_whid65040_032_t* win) {
-	gdg_whid65040_032_t* gdg = win->gdg;
-	ImGui::Text("WRITE   %02X", gdg->write_planes);
-	ImGui::Text("RESET   %02X", gdg->reset_planes);
-	ImGui::Text("READ    %02X", gdg->read_planes);
-}
-
 static void _ui_gdg_whid65040_032_draw_state(ui_gdg_whid65040_032_t* win) {
 	if (ImGui::CollapsingHeader("Registers", ImGuiTreeNodeFlags_DefaultOpen)) {
 		_ui_gdg_whid65040_032_draw_registers(win);
@@ -208,9 +201,6 @@ static void _ui_gdg_whid65040_032_draw_state(ui_gdg_whid65040_032_t* win) {
 	if (ImGui::CollapsingHeader("Palette & Border", ImGuiTreeNodeFlags_DefaultOpen)) {
 		_ui_gdg_whid65040_032_draw_border_color(win);
 		_ui_gdg_whid65040_032_draw_palette(win);
-	}
-	if (ImGui::CollapsingHeader("Plane Masks", ImGuiTreeNodeFlags_DefaultOpen)) {
-		_ui_gdg_whid65040_032_draw_planes(win);
 	}
 }
 

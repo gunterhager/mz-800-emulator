@@ -260,7 +260,7 @@ void mz800_init_memory_mapping(mz800_t* sys) {
 
 	// According to SHARP Service Manual
 	mem_map_rom(&sys->mem, 0, 0x0000, 0x1000, sys->rom1);
-	mem_map_ram(&sys->mem, 0, 0x1000, 0x1000, sys->cgrom); // Character ROM
+	mem_map_rom(&sys->mem, 0, 0x1000, 0x1000, sys->cgrom); // Character ROM
 	mem_map_ram(&sys->mem, 0, 0x2000, 0x6000, sys->dram + 0x2000);
 	sys->vram_banked_in = true;
 	mem_map_ram(&sys->mem, 0, 0x8000, 0x4000, sys->dram + 0x8000); // VRAM isn't handled by regular memory mapping

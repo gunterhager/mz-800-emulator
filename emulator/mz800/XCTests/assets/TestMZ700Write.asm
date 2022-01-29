@@ -1,15 +1,19 @@
-; Writing to MZ-700 character and color VRAM
+; Test writing too much into VRAM in MZ-700 mode
 ;
 ; Use z80asm from the z88dk project to build binary file.
 ; Command line:
-; z80asm -b TestMZ700Color.asm
+; z80asm -b TestMZ700VRAMOverwrite.asm
 
 include "MZ800.inc"
 
 org 02000h
 
+  ld a, 01
+  ld hl, 01000h
+  ld (hl), a
+  halt
+
 ; Program features
-;define ClearScreen
 define ClearColor
 
 defc DisplayMode = DisplayMode40x25_8ColorMZ700
@@ -29,25 +33,12 @@ defc DisplayMode = DisplayMode40x25_8ColorMZ700
   ld a, ReadFormatMZ700
   out (PortReadFormatRegister), a
 
-ifdef ClearScreen
-
-  ; Setup memory addresses for character VRAM
-  ld hl, MemoryMZ700VRAMStart
-  ld de, MemoryMZ700VRAMStart + 1
-  ld bc, MemoryMZ700VRAMColorEnd - MemoryMZ700VRAMColorStart
-
-  ; Clear VRAM
-  ld (hl), 01h ; clear first byte of VRAM
-  ldir ; clear the rest of the VRAM in one loop
-
-endif
-
 ifdef ClearColor
 
   ; Setup memory addresses for color VRAM
   ld hl, MemoryMZ700VRAMColorStart
   ld de, MemoryMZ700VRAMColorStart + 1
-  ld bc, MemoryMZ700VRAMColorEnd - MemoryMZ700VRAMColorStart
+  ld bc, 0ffffh ; load maximum number into byte counter
 
   ; Clear VRAM
   ld (hl), 071h ; clear first byte of VRAM with white foreground, blue background
