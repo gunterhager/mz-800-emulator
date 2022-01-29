@@ -247,7 +247,8 @@ static void draw_status_bar(void) {
 	sdtx_origin(1.0f, (h / 8.0f) - 3.5f);
 	sdtx_font(0);
 
-	sdtx_puts("mz800");
+	gdg_whid65040_032_t* gdg = &state.mz800.gdg;
+	sdtx_printf("MZ Mode: %s", (gdg->is_mz700) ? "MZ-700":"MZ-800");
 
 	sdtx_font(0);
 	sdtx_color1i(text_color);

@@ -92,6 +92,10 @@ typedef struct {
 #define MZ700_VRAM_END      0xe000
 #define MZ700_VRAM_SIZE     (MZ700_VRAM_END - MZ700_VRAM_START)
 
+// MZ-700 Memory mapped IO
+#define MZ700_IO_START    0xe000
+#define MZ700_IO_END      0xe009
+
 typedef struct {
 
 	// CPU Z80A
@@ -370,18 +374,60 @@ uint32_t mz800_exec(mz800_t* sys, uint32_t micro_seconds) {
 }
 
 static bool _mz800_is_mz700VRAM_addr(mz800_t* sys, uint16_t addr) {
-	if (!sys->vram_banked_in) return false;
-	if (!sys->gdg.is_mz700) return false;
+	if (!sys->vram_banked_in) { return false; }
+	if (!sys->gdg.is_mz700) { return false; }
 	return (addr >= MZ700_VRAM_START) && (addr < MZ700_VRAM_END);
 }
 
 static bool _mz800_is_VRAM_addr(mz800_t* sys, uint16_t addr) {
-	if (!sys->vram_banked_in) return false;
-	if (sys->gdg.is_mz700) return false;
-	if (addr < MZ800_VRAM_START) return false;
+	if (!sys->vram_banked_in) { return false; }
+	if (sys->gdg.is_mz700) { return false; }
+	if (addr < MZ800_VRAM_START) { return false; }
 	bool is_640 = (sys->gdg.dmd & GDG_DMD_640);
-	return is_640 ? addr < MZ800_VRAM_640_END : MZ800_VRAM_320_END;
+	return addr < (is_640 ? MZ800_VRAM_640_END : MZ800_VRAM_320_END);
 }
+
+#define _Z80_ADDR_MASK (0xffffULL)
+
+/// Translates memory mapped IO for MZ-700 mode to proper IO requests
+static uint64_t _mz700_translate_iorq(mz800_t* sys, uint64_t cpu_pins) {
+	uint16_t io_addr = 0;
+
+	switch (cpu_pins & (_Z80_ADDR_MASK | Z80_RD | Z80_WR)) {
+			// i8255
+		case (MZ700_IO_START        | Z80_WR): io_addr = 0xd0; break; // W
+		case (MZ700_IO_START + 0x01 | Z80_RD): io_addr = 0xd1; break; // R
+		case (MZ700_IO_START + 0x02 | Z80_WR): io_addr = 0xd2; break; // R/W
+		case (MZ700_IO_START + 0x02 | Z80_RD): io_addr = 0xd2; break;
+		case (MZ700_IO_START + 0x03 | Z80_WR): io_addr = 0xd3; break; // W
+
+			// i8253
+		case (MZ700_IO_START + 0x04 | Z80_WR): io_addr = 0xd4; break; // R/W
+		case (MZ700_IO_START + 0x04 | Z80_RD): io_addr = 0xd4; break;
+		case (MZ700_IO_START + 0x05 | Z80_WR): io_addr = 0xd5; break; // R/W
+		case (MZ700_IO_START + 0x05 | Z80_RD): io_addr = 0xd5; break;
+		case (MZ700_IO_START + 0x06 | Z80_WR): io_addr = 0xd6; break; // R/W
+		case (MZ700_IO_START + 0x06 | Z80_RD): io_addr = 0xd6; break;
+		case (MZ700_IO_START + 0x07 | Z80_WR): io_addr = 0xd7; break; // W
+
+			// Implementation of MZ-700 0xe008 is a bit unclear
+//		case (MZ700_IO_START + 0x08 | Z80_WR): io_addr = 0xd7; break; // R/W
+		case (MZ700_IO_START + 0x08 | Z80_RD): io_addr = 0xce; break;
+
+		default:
+			break;
+	}
+
+	if (io_addr != 0) {
+		cpu_pins &= ~Z80_MREQ; cpu_pins |= Z80_IORQ;
+		Z80_SET_ADDR(cpu_pins, io_addr);
+	}
+	return mz800_cpu_iorq(sys, cpu_pins);
+}
+
+#undef _Z80_ADDR_MASK
+
+#define IN_RANGE(A,B,C) (((A)>=(B))&&((A)<=(C)))
 
 static uint64_t mz800_cpu_tick(mz800_t* sys, uint64_t cpu_pins) {
 	cpu_pins = z80_tick(&sys->cpu, cpu_pins);
@@ -418,6 +464,11 @@ static uint64_t mz800_cpu_tick(mz800_t* sys, uint64_t cpu_pins) {
 				gdg_whid65040_032_mem_wr(&sys->gdg, vram_addr, Z80_GET_DATA(cpu_pins));
 			}
 		}
+		// MZ-700 memory mapped IO
+		else if (sys->gdg.is_mz700
+				 && IN_RANGE(addr, MZ700_IO_START, MZ700_IO_END)) {
+			cpu_pins = _mz700_translate_iorq(sys, cpu_pins);
+		}
 		// Other memory
 		else {
 			if (cpu_pins & Z80_RD) {
@@ -437,8 +488,6 @@ static uint64_t mz800_cpu_tick(mz800_t* sys, uint64_t cpu_pins) {
 	return cpu_pins;
 }
 
-#define IN_RANGE(A,B,C) (((A)>=(B))&&((A)<=(C)))
-
 static uint64_t mz800_cpu_iorq(mz800_t* sys, uint64_t cpu_pins) {
 	uint16_t address = Z80_GET_ADDR(cpu_pins) & 0xff; // check only the lower byte of the address
 
@@ -453,7 +502,13 @@ static uint64_t mz800_cpu_iorq(mz800_t* sys, uint64_t cpu_pins) {
 	}
 	// PPI i8255, keyboard and cassette driver
 	else if (IN_RANGE(address, 0xd0, 0xd3)) {
-		cpu_pins = i8255_tick(&sys->ppi, cpu_pins);
+#warning "TODO: continue implementation of i8255 pins"
+		uint64_t ppi_pins = (cpu_pins & Z80_PIN_MASK & ~I8255_PC_PINS) | I8255_CS;
+		ppi_pins = i8255_tick(&sys->ppi, ppi_pins);
+		// Copy data bus value to cpu pins
+		if ((ppi_pins & (I8255_CS|I8255_RD)) == (I8255_CS|I8255_RD)) {
+			Z80_SET_DATA(cpu_pins, I8255_GET_DATA(ppi_pins));
+		}
 	}
 	// CTC i8253, programmable counter/timer
 	else if (IN_RANGE(address, 0xd4, 0xd7)) {
@@ -492,6 +547,7 @@ static uint64_t mz800_cpu_iorq(mz800_t* sys, uint64_t cpu_pins) {
 	}
 	// PIO Z80 PIO, parallel I/O unit
 	else if (IN_RANGE(address, 0xfc, 0xff)) {
+#warning "TODO: continue implementation of Z80 PIO pins"
 		cpu_pins = z80pio_tick(&sys->pio, cpu_pins);
 	}
 	// DEBUG
@@ -501,5 +557,7 @@ static uint64_t mz800_cpu_iorq(mz800_t* sys, uint64_t cpu_pins) {
 
 	return cpu_pins;
 }
+
+#undef IN_RANGE
 
 #endif /* CHIPS_IMPL */
