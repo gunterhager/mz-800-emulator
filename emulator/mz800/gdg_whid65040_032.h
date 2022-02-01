@@ -46,13 +46,27 @@ typedef struct gdg_whid65040_032_crt_t {
 #define GDG_VRAM_SIZE 0x4000
 
 typedef struct {
-	uint8_t *cgrom;             // Character ROM
-	uint32_t* rgba8_buffer;     // pointer to the RGBA8 output framebuffer
+	/// NTSC/PAL selection
+	bool ntpl;
+
+	/// Character ROM
+	uint8_t *cgrom;
+
+	/// pointer to the RGBA8 output framebuffer
+	uint32_t* rgba8_buffer;
 	size_t rgba8_buffer_size;
 } gdg_whid65040_032_desc_t;
 
 /// GDG WHID 65040-032 state
 typedef struct {
+	/// NTSC/PAL selection
+	/// Set via jumper on the MZ-800 main board.
+	/// Set to true for PAL.
+	bool ntpl;
+
+	/// CPU clock
+	uint64_t cpu_clk0;
+
 	/// Write format register
 	/// Determines how pixel data is written to VRAM.
 	uint8_t wf;
@@ -196,6 +210,22 @@ void gdg_whid65040_032_decode_vram_mz700(gdg_whid65040_032_t* gdg, uint16_t addr
 #define CHIPS_ASSERT(c) assert(c)
 #endif
 
+// CLK0 Frequencies
+#define GDG_CLK0_PAL (17734475)  // 17.734475 MHz
+#define GDG_CLK0_NTSC (14318180) // 14.31818 MHZ
+
+// Derived frequencies PAL
+#define GDG_CPU_CLK_PAL (GDG_CLK0_PAL / 5)     // 3.546895 MHz
+#define GDG_CTC_CLK0_PAL (GDG_CLK0_PAL / 16)   // 1.1084 MHz (CKMS)
+#define GDG_CTC_CLK1_PAL (GDG_CLK0_PAL / 1136) // 15.611 kHz (HSYN)
+#define GDG_VSYN_PAL (GDG_CTC_CH1_PAL / 312)   // 50.036 Hz (VSYN)
+
+// Derived frequencies NTSC
+#define GDG_CPU_CLK_NTSC (GDG_CLK0_NTSC / 4)   // 3.579545 MHz
+#define GDG_CTC_CH0_NTSC (GDG_CLK0_NTSC / 16)  // 894.88625 kHz
+#define GDG_CTC_CH1_NTSC (GDG_CLK0_NTSC / 912) // 15.7 kHz (HSYN)
+#define GDG_VSYN_NTSC (GDG_CTC_CH1_NTSC / 262) // 59.922 Hz (VSYN)
+
 // Color definition helpers
 #define CI0 (0x78)
 #define CI1 (0xdf)
@@ -228,6 +258,7 @@ const uint32_t mz800_colors[16] = {
 
 static uint64_t _gdg_whid65040_032_iorq(gdg_whid65040_032_t* gdg, uint64_t pins);
 void _gdg_whid65040_032_update_border(gdg_whid65040_032_t* gdg);
+static void _gdg_whid65040_032_setup_freq(gdg_whid65040_032_t* gdg);
 
 // MARK: - Life cycle
 
@@ -241,6 +272,9 @@ void _gdg_whid65040_032_update_border(gdg_whid65040_032_t* gdg);
  */
 void gdg_whid65040_032_init(gdg_whid65040_032_t* gdg, gdg_whid65040_032_desc_t* desc) {
 	CHIPS_ASSERT(gdg && desc);
+	// Set NTSC/PAL selection
+	gdg->ntpl = desc->ntpl;
+	
 	// Set the CGROM and RGBA8 buffer pointers prior to reset
 	gdg->cgrom = desc->cgrom;
 	gdg->rgba8_buffer = desc->rgba8_buffer;
@@ -254,6 +288,9 @@ void gdg_whid65040_032_init(gdg_whid65040_032_t* gdg, gdg_whid65040_032_desc_t* 
 void gdg_whid65040_032_reset(gdg_whid65040_032_t* gdg) {
 	CHIPS_ASSERT(gdg);
 
+	// Save NTSC/PAL selection
+	bool ntpl = gdg->ntpl;
+
 	// Save pointers
 	uint8_t *cgrom = gdg->cgrom;
 	uint32_t *rgba8_buffer = gdg->rgba8_buffer;
@@ -262,7 +299,9 @@ void gdg_whid65040_032_reset(gdg_whid65040_032_t* gdg) {
 	// Reset
 	memset(gdg, 0, sizeof(*gdg));
 
-	// Restore pointers
+	// Restore values
+	gdg->ntpl = ntpl;
+	_gdg_whid65040_032_setup_freq(gdg);
 	gdg->cgrom = cgrom;
 	gdg->rgba8_buffer = rgba8_buffer;
 	gdg->rgba8_buffer_size = rgba8_buffer_size;
@@ -279,6 +318,13 @@ void gdg_whid65040_032_reset(gdg_whid65040_032_t* gdg) {
 uint64_t gdg_whid65040_032_tick(gdg_whid65040_032_t *gdg, uint64_t pins) {
 	CHIPS_ASSERT(gdg);
 	return _gdg_whid65040_032_iorq(gdg, pins);
+}
+
+// MARK: - Frequencies
+
+/// Setup frequencies based on NTPL pin
+static void _gdg_whid65040_032_setup_freq(gdg_whid65040_032_t* gdg) {
+	gdg->cpu_clk0 = gdg->ntpl ? GDG_CPU_CLK_PAL: GDG_CPU_CLK_NTSC;
 }
 
 // MARK: - IO request

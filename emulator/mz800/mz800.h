@@ -195,8 +195,7 @@ static uint64_t mz800_cpu_iorq(mz800_t* sys, uint64_t cpu_pins);
 
 #define NOT_IMPLEMENTED false
 
-/* MZ-800 emulator state and callbacks */
-#define MZ800_FREQ (3546895) // 3.546895 MHz
+// Display size
 #define MZ800_DISP_WIDTH (640)
 #define MZ800_DISP_HEIGHT (200)
 
@@ -217,6 +216,7 @@ void mz800_init(mz800_t* sys, mz800_desc_t* desc) {
 	z80pio_init(&sys->pio);
 	i8255_init(&sys->ppi);
 	gdg_whid65040_032_desc_t gdg_desc = (gdg_whid65040_032_desc_t) {
+		.ntpl = true,
 		.cgrom = sys->cgrom,
 		.rgba8_buffer = desc->pixel_buffer.ptr,
 		.rgba8_buffer_size = desc->pixel_buffer.size
@@ -353,7 +353,8 @@ uint64_t mz800_update_memory_mapping(mz800_t* sys, uint64_t cpu_pins) {
 
 uint32_t mz800_exec(mz800_t* sys, uint32_t micro_seconds) {
 	CHIPS_ASSERT(sys && sys->valid);
-	const uint32_t num_ticks = clk_us_to_ticks(MZ800_FREQ, micro_seconds);
+
+	const uint32_t num_ticks = clk_us_to_ticks(sys->gdg.cpu_clk0, micro_seconds);
 	uint64_t pins = sys->pins;
 	if (0 == sys->debug.callback.func) {
 		// run without debug hook
