@@ -1,4 +1,4 @@
 
 .fips-imports.cmake
 *.pyc
-*.pyc
+.fips-settings.yml

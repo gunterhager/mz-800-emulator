@@ -1,0 +1,44 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 21,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "default",
+      "displayName": "osx-xcode-debug",
+      "binaryDir": "/Users/gupi/Documents/Development/Private/fips-workspace/fips-build/mz-800-emulator/osx-xcode-debug",
+      "generator": "Xcode",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "FIPS_CONFIG": "osx-xcode-debug",
+        "FIPS_LOCAL_BUILD": "OFF",
+        "FIPS_OSX_USE_ARC": {
+          "type": "BOOL",
+          "value": "ON"
+        },
+        "FIPS_AUTO_IMPORT": "OFF",
+        "CMAKE_OSX_SYSROOT": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "default",
+      "configurePreset": "default",
+      "configuration": "Debug"
+    },
+    {
+      "name": "debug",
+      "configurePreset": "default",
+      "configuration": "Debug"
+    },
+    {
+      "name": "release",
+      "configurePreset": "default",
+      "configuration": "Release"
+    }
+  ]
+}

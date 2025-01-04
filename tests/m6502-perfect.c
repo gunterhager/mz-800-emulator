@@ -243,7 +243,11 @@ static bool step_until_sync(uint32_t expected_ticks, bool irq, bool nmi) {
         printf("<-- "); chipStatus(p6502_state);
         printf("tick=%d exp=%d\n", tick, expected_ticks);
     }
-    return (tick == expected_ticks);
+    if (tick == expected_ticks) {
+        return true;
+    } else {
+        return false;
+    }
 }
 
 static bool single_step(uint32_t ticks, bool irq, bool nmi) {
@@ -1357,6 +1361,665 @@ UTEST(m6502_perfect, IRQ2) {
         T(single_step(10, true, false));
 #endif
     }
+}
+
+UTEST(m6502_perfect, ADC_decimal_0) {
+    // https://www.nesdev.org/wiki/Visual6502wiki/6502DecimalMode
+    // http://visual6502.org/JSSim/expert.html?graphics=f&steps=30&a=0&d=a9c848a900286900ea08aa6849c2ea
+    init();
+    uint8_t prog[] = {
+        0xa9, 0xc8, // LDA #C8
+        0x48,       // PHA
+        0xa9, 0x00, // LDA #0
+        0x28,       // PLP
+        0x69, 0x00, // ADC #00
+        0xea,       // NOP
+        0x08,       // PHP
+    };
+    copy(0x0, prog, sizeof(prog));
+    start(0x0);
+    OP(2); TA(0xC8);                // LDA %C8
+    OP(3); TF(M6502_NF);            // PLP
+    OP(2); TA(0x00); TF(M6502_ZF);  // LDA #0
+    OP(4); TF(M6502_NF|M6502_VF|M6502_DF); // PLP
+    OP(2); TA(0x00); TF(M6502_DF|M6502_ZF);   // ADC #00
+    OP(2);                          // NOP
+}
+
+UTEST(m6502_perfect, ADC_decimal_1) {
+    // https://www.nesdev.org/wiki/Visual6502wiki/6502DecimalMode
+    // http://visual6502.org/JSSim/expert.html?graphics=f&steps=56&a=0&d=a90f48a979286900ea08aa6849c2ea
+    init();
+    uint8_t prog[] = {
+        0xA9, 0x0F, // LDA #0F
+        0x48,       // PHA
+        0xA9, 0x79, // LDA #79
+        0x28,       // PLP
+        0x69, 0x00, // ADC #0
+        0xEA,       // NOP
+        0x08,       // PHP
+        0xAA,       // TAX
+        0x68,       // PLA
+        0x49, 0xC2, // EOR #C2
+        0xEA,       // NOP,
+    };
+    copy(0x0, prog, sizeof(prog));
+    start(0x0);
+    OP(2); TA(0x0F);        // LDA #0F
+    OP(3); TF(0x00);        // PHA
+    OP(2); TA(0x79);        // LDA #79
+    OP(4); TF(M6502_DF|M6502_ZF|M6502_CF);  // PLP
+    OP(2); TA(0x80); TF(M6502_NF|M6502_VF|M6502_DF);  // ADC #0
+    OP(2); TA(0x80); TF(M6502_NF|M6502_VF|M6502_DF);  // NOP
+    OP(3); TA(0x80); TF(M6502_NF|M6502_VF|M6502_DF);  // PHP
+    OP(2); TA(0x80); TX(0x80); TF(M6502_NF|M6502_VF|M6502_DF);  // TAX
+    OP(4); TA(0xFC); TX(0x80); TF(M6502_NF|M6502_VF|M6502_DF);  // PLA
+    OP(2); TA(0x3E); TX(0x80); TF(M6502_VF|M6502_DF); // EOR #C2
+    OP(2); // NOP
+}
+
+UTEST(m6502_perfect, ADC_decimal_2) {
+    // https://www.nesdev.org/wiki/Visual6502wiki/6502DecimalMode
+    // http://visual6502.org/JSSim/expert.html?graphics=f&steps=56&a=0&d=a90a48a924286956ea08aa6849c2ea
+    init();
+    uint8_t prog[] = {
+        0xA9, 0x0A, // LDA #0A
+        0x48,       // PHA
+        0xA9, 0x24, // LDA #24
+        0x28,       // PLP
+        0x69, 0x56, // ADC #56
+        0xEA,       // NOP
+        0x08,       // PHP
+        0xAA,       // TAX
+        0x68,       // PLA
+        0x49, 0xC2, // EOR #C2
+        0xEA,       // NOP
+    };
+    copy(0x0, prog, sizeof(prog));
+    start(0x0);
+    OP(2); TA(0x0A);        // LDA #0A
+    OP(3); TF(0x00);        // PHA
+    OP(2); TA(0x24);        // LDA #24
+    OP(4); TF(M6502_DF|M6502_ZF);    // PLP
+    OP(2); TA(0x80); TF(M6502_NF|M6502_VF|M6502_DF);    // ADC #56
+    OP(2); TA(0x80); TF(M6502_NF|M6502_VF|M6502_DF);    // NOP
+    OP(3); TA(0x80); TF(M6502_NF|M6502_VF|M6502_DF);    // PHP
+    OP(2); TA(0x80); TX(0x80); TF(M6502_NF|M6502_VF|M6502_DF);    // TAX
+    OP(4); TA(0xF8); TX(0x80); TF(M6502_NF|M6502_VF|M6502_DF);    // PLA
+    OP(2); TA(0x3A); TX(0x80); TF(M6502_VF|M6502_DF); // EOR #C2
+    OP(2); // NOP
+}
+
+UTEST(m6502_perfect, ADC_decimal_3) {
+    // https://www.nesdev.org/wiki/Visual6502wiki/6502DecimalMode
+    // http://visual6502.org/JSSim/expert.html?graphics=f&steps=56&a=0&d=a98e48a993286982ea08aa6849c2ea
+    init();
+    uint8_t prog[] = {
+        0xA9, 0x8E, // LDA #8E
+        0x48,       // PHA
+        0xA9, 0x93, // LDA #93
+        0x28,       // PLP
+        0x69, 0x82, // ADC #82
+        0xEA,       // NOP
+        0x08,       // PHP
+        0xAA,       // TAX
+        0x68,       // PLA
+        0x49, 0xC2, // EOR #C2
+        0xEA,       // NOP
+    };
+    copy(0x0, prog, sizeof(prog));
+    start(0x0);
+    OP(2); TA(0x8E);        // LDA #8E
+    OP(3); TF(M6502_NF);    // PHA
+    OP(2); TA(0x93);        // LDA #93
+    OP(4); TF(M6502_NF|M6502_DF|M6502_ZF);    // PLP
+    OP(2); TA(0x75); TF(M6502_VF|M6502_DF|M6502_CF);    // ADC #82
+    OP(2); TA(0x75); TF(M6502_VF|M6502_DF|M6502_CF);    // NOP
+    OP(3); TA(0x75); TF(M6502_VF|M6502_DF|M6502_CF);    // PHP
+    OP(2); TA(0x75); TX(0x75); TF(M6502_VF|M6502_DF|M6502_CF);    // TAX
+    OP(4); TA(0x7D); TX(0x75); TF(M6502_VF|M6502_DF|M6502_CF);    // PLA
+    OP(2); TA(0xBF); TX(0x75); TF(M6502_NF|M6502_VF|M6502_DF|M6502_CF); // EOR #C2
+    OP(2); // NOP
+}
+
+UTEST(m6502_perfect, ADC_decimal_4) {
+    // https://www.nesdev.org/wiki/Visual6502wiki/6502DecimalMode
+    // http://visual6502.org/JSSim/expert.html?graphics=f&steps=56&a=0&d=a9fe48a989286976ea08aa6849c2ea
+    init();
+    uint8_t prog[] = {
+        0xA9, 0xFE, // LDA #FE
+        0x48,       // PHA
+        0xA9, 0x89, // LDA #89
+        0x28,       // PLP
+        0x69, 0x76, // ADC #76
+        0xEA,       // NOP
+        0x08,       // PHP
+        0xAA,       // TAX
+        0x68,       // PLA
+        0x49, 0xC2, // EOR #C2
+        0xEA,       // NOP
+    };
+    copy(0x0, prog, sizeof(prog));
+    start(0x0);
+    OP(2); TA(0xFE);        // LDA #FE
+    OP(3); TF(M6502_NF);    // PHA
+    OP(2); TA(0x89);        // LDA #89
+    OP(4); TF(M6502_NF|M6502_VF|M6502_DF|M6502_ZF);     // PLP
+    OP(2); TA(0x65); TF(M6502_DF|M6502_CF);    // ADC #76
+    OP(2); TA(0x65); TF(M6502_DF|M6502_CF);    // NOP
+    OP(3); TA(0x65); TF(M6502_DF|M6502_CF);    // PHP
+    OP(2); TA(0x65); TX(0x65); TF(M6502_DF|M6502_CF);    // TAX
+    OP(4); TA(0x3D); TX(0x65); TF(M6502_DF|M6502_CF);    // PLA
+    OP(2); TA(0xFF); TX(0x65); TF(M6502_NF|M6502_DF|M6502_CF); // EOR #C2
+    OP(2); // NOP
+}
+
+UTEST(m6502_perfect, ADC_decimal_5) {
+    // https://www.nesdev.org/wiki/Visual6502wiki/6502DecimalMode
+    // http://visual6502.org/JSSim/expert.html?graphics=f&steps=56&a=0&d=a9fd48a989286976ea08aa6849c2ea
+    init();
+    uint8_t prog[] = {
+        0xA9, 0xFD, // LDA #FD
+        0x48,       // PHA
+        0xA9, 0x89, // LDA #89
+        0x28,       // PLP
+        0x69, 0x76, // ADC #76
+        0xEA,       // NOP
+        0x08,       // PHP
+        0xAA,       // TAX
+        0x68,       // PLA
+        0x49, 0xC2, // EOR #C2
+        0xEA,       // NOP
+    };
+    copy(0x0, prog, sizeof(prog));
+    start(0x0);
+    OP(2); TA(0xFD);        // LDA #FD
+    OP(3); TF(M6502_NF);    // PHA
+    OP(2); TA(0x89);        // LDA #89
+    OP(4); TF(M6502_NF|M6502_VF|M6502_DF|M6502_CF);     // PLP
+    OP(2); TA(0x66); TF(M6502_DF|M6502_ZF|M6502_CF);    // ADC #76
+    OP(2); TA(0x66); TF(M6502_DF|M6502_ZF|M6502_CF);    // NOP
+    OP(3); TA(0x66); TF(M6502_DF|M6502_ZF|M6502_CF);    // PHP
+    OP(2); TA(0x66); TX(0x66); TF(M6502_DF|M6502_CF);   // TAX
+    OP(4); TA(0x3F); TX(0x66); TF(M6502_DF|M6502_CF);   // PLA
+    OP(2); TA(0xFD); TX(0x66); TF(M6502_NF|M6502_DF|M6502_CF); // EOR #C2
+    OP(2); // NOP
+}
+
+UTEST(m6502_perfect, ADC_decimal_6) {
+    // https://www.nesdev.org/wiki/Visual6502wiki/6502DecimalMode
+    // http://visual6502.org/JSSim/expert.html?graphics=f&steps=56&a=0&d=a9ba48a9802869f0ea08aa6849c2ea
+    init();
+    uint8_t prog[] = {
+        0xA9, 0xBA, // LDA #BA
+        0x48,       // PHA
+        0xA9, 0x80, // LDA #80
+        0x28,       // PLP
+        0x69, 0xF0, // ADC #F0
+        0xEA,       // NOP
+        0x08,       // PHP
+        0xAA,       // TAX
+        0x68,       // PLA
+        0x49, 0xC2, // EOR #C2
+        0xEA,       // NOP
+    };
+    copy(0x0, prog, sizeof(prog));
+    start(0x0);
+    OP(2); TA(0xBA);        // LDA #BA
+    OP(3); TF(M6502_NF);    // PHA
+    OP(2); TA(0x80);        // LDA #80
+    OP(4); TF(M6502_NF|M6502_DF|M6502_ZF);     // PLP
+    OP(2); TA(0xD0); TF(M6502_VF|M6502_DF|M6502_CF);    // ADC #F0
+    OP(2); TA(0xD0); TF(M6502_VF|M6502_DF|M6502_CF);    // NOP
+    OP(3); TA(0xD0); TF(M6502_VF|M6502_DF|M6502_CF);    // PHP
+    OP(2); TA(0xD0); TX(0xD0); TF(M6502_NF|M6502_VF|M6502_DF|M6502_CF);   // TAX
+    OP(4); TA(0x79); TX(0xD0); TF(M6502_VF|M6502_DF|M6502_CF);   // PLA
+    OP(2); TA(0xBB); TX(0xD0); TF(M6502_NF|M6502_VF|M6502_DF|M6502_CF); // EOR #C2
+    OP(2); // NOP
+}
+
+UTEST(m6502_perfect, ADC_decimal_7) {
+    // https://www.nesdev.org/wiki/Visual6502wiki/6502DecimalMode
+    // http://visual6502.org/JSSim/expert.html?graphics=f&steps=56&a=0&d=a97e48a9802869faea08aa6849c2ea
+    init();
+    uint8_t prog[] = {
+        0xA9, 0x7E, // LDA #7E
+        0x48,       // PHA
+        0xA9, 0x80, // LDA #80
+        0x28,       // PLP
+        0x69, 0xFA, // ADC #FA
+        0xEA,       // NOP
+        0x08,       // PHP
+        0xAA,       // TAX
+        0x68,       // PLA
+        0x49, 0xC2, // EOR #C2
+        0xEA,       // NOP
+    };
+    copy(0x0, prog, sizeof(prog));
+    start(0x0);
+    OP(2); TA(0x7E);        // LDA #7E
+    OP(3); TF(0);           // PHA
+    OP(2); TA(0x80); TF(M6502_NF);  // LDA #80
+    OP(4); TF(M6502_VF|M6502_DF|M6502_ZF);     // PLP
+    OP(2); TA(0xE0); TF(M6502_NF|M6502_DF|M6502_CF);    // ADC #FA
+    OP(2); TA(0xE0); TF(M6502_NF|M6502_DF|M6502_CF);    // NOP
+    OP(3); TA(0xE0); TF(M6502_NF|M6502_DF|M6502_CF);    // PHP
+    OP(2); TA(0xE0); TX(0xE0); TF(M6502_NF|M6502_DF|M6502_CF);   // TAX
+    OP(4); TA(0xBD); TX(0xE0); TF(M6502_NF|M6502_DF|M6502_CF);   // PLA
+    OP(2); TA(0x7F); TX(0xE0); TF(M6502_DF|M6502_CF); // EOR #C2
+    OP(2); // NOP
+}
+
+UTEST(m6502_perfect, ADC_decimal_8) {
+    // https://www.nesdev.org/wiki/Visual6502wiki/6502DecimalMode
+    // http://visual6502.org/JSSim/expert.html?graphics=f&steps=56&a=0&d=a9fe48a92f28694fea08aa6849c2ea
+    init();
+    uint8_t prog[] = {
+        0xA9, 0xFE, // LDA #FE
+        0x48,       // PHA
+        0xA9, 0x2F, // LDA #2D
+        0x28,       // PLP
+        0x69, 0x4F, // ADC #4F
+        0xEA,       // NOP
+        0x08,       // PHP
+        0xAA,       // TAX
+        0x68,       // PLA
+        0x49, 0xC2, // EOR #C2
+        0xEA,       // NOP
+    };
+    copy(0x0, prog, sizeof(prog));
+    start(0x0);
+    OP(2); TA(0xFE); TF(M6502_NF); // LDA #FE
+    OP(3); TF(M6502_NF);    // PHA
+    OP(2); TA(0x2F); TF(0);  // LDA #2F
+    OP(4); TF(M6502_NF|M6502_VF|M6502_DF|M6502_ZF); // PLP
+    OP(2); TA(0x74); TF(M6502_DF);    // ADC #4F
+    OP(2); TA(0x74); TF(M6502_DF);    // NOP
+    OP(3); TA(0x74); TF(M6502_DF);    // PHP
+    OP(2); TA(0x74); TX(0x74); TF(M6502_DF);   // TAX
+    OP(4); TA(0x3C); TX(0x74); TF(M6502_DF);   // PLA
+    OP(2); TA(0xFE); TX(0x74); TF(M6502_NF|M6502_DF); // EOR #C2
+    OP(2); // NOP
+}
+
+UTEST(m6502_perfect, ADC_decimal_9) {
+    // https://www.nesdev.org/wiki/Visual6502wiki/6502DecimalMode
+    // http://visual6502.org/JSSim/expert.html?graphics=f&steps=56&a=0&d=a9ff48a96f286900ea08aa6849c2ea
+    init();
+    uint8_t prog[] = {
+        0xA9, 0xFF, // LDA 0xFF
+        0x48,       // PHA
+        0xA9, 0x6F, // LDA #6F
+        0x28,       // PLP
+        0x69, 0x00, // ADC #00
+        0xEA,       // NOP
+        0x08,       // PHP
+        0xAA,       // TAX
+        0x68,       // PLA
+        0x49, 0xC2, // EOR #C2
+        0xEA,       // NOP
+    };
+    copy(0x0, prog, sizeof(prog));
+    start(0x0);
+    OP(2); TA(0xFF); TF(M6502_NF); // LDA #FF
+    OP(3); TF(M6502_NF);    // PHA
+    OP(2); TA(0x6F); TF(0);  // LDA #6F
+    OP(4); TF(M6502_NF|M6502_VF|M6502_DF|M6502_ZF|M6502_CF); // PLP
+    OP(2); TA(0x76); TF(M6502_DF);    // ADC #00
+    OP(2); TA(0x76); TF(M6502_DF);    // NOP
+    OP(3); TA(0x76); TF(M6502_DF);    // PHP
+    OP(2); TA(0x76); TX(0x76); TF(M6502_DF);   // TAX
+    OP(4); TA(0x3C); TX(0x76); TF(M6502_DF);   // PLA
+    OP(2); TA(0xFE); TX(0x76); TF(M6502_NF|M6502_DF); // EOR #C2
+    OP(2); // NOP
+}
+
+UTEST(m6502_perfect, ADC_decimal_99_00_c) {
+    // http://visual6502.org/JSSim/expert.html?graphics=f&steps=56&a=0&d=a9ff48a999286900ea08aa6849c2ea
+    init();
+    uint8_t prog[] = {
+        0xA9, 0xFF, // LDA 0xFF
+        0x48,       // PHA
+        0xA9, 0x99, // LDA #99
+        0x28,       // PLP
+        0x69, 0x00, // ADC #00
+        0xEA,       // NOP
+        0x08,       // PHP
+        0xAA,       // TAX
+        0x68,       // PLA
+        0x49, 0xC2, // EOR #C2
+        0xEA,       // NOP
+    };
+    copy(0x0, prog, sizeof(prog));
+    start(0x0);
+    OP(2); TA(0xFF); TF(M6502_NF); // LDA #FF
+    OP(3); TF(M6502_NF);    // PHA
+    OP(2); TA(0x99); TF(M6502_NF);  // LDA #99
+    OP(4); TF(M6502_NF|M6502_VF|M6502_DF|M6502_ZF|M6502_CF); // PLP
+    OP(2); TA(0x00); TF(M6502_NF|M6502_DF|M6502_CF);    // ADC #00
+    OP(2); TA(0x00); TF(M6502_NF|M6502_DF|M6502_CF);    // NOP
+    OP(3); TA(0x00); TF(M6502_NF|M6502_DF|M6502_CF);    // PHP
+    OP(2); TA(0x00); TX(0x00); TF(M6502_DF|M6502_ZF|M6502_CF);   // TAX
+    OP(4); TA(0xBD); TX(0x00); TF(M6502_NF|M6502_DF|M6502_CF);   // PLA
+    OP(2); TA(0x7F); TX(0x00); TF(M6502_DF|M6502_CF); // EOR #C2
+    OP(2); // NOP
+}
+
+UTEST(m6502_perfect, ADC_decimal_00_99_c) {
+    // http://visual6502.org/JSSim/expert.html?graphics=f&steps=56&a=0&d=a9ff48a900286999ea08aa6849c2ea
+    init();
+    uint8_t prog[] = {
+        0xA9, 0xFF, // LDA 0xFF
+        0x48,       // PHA
+        0xA9, 0x00, // LDA #00
+        0x28,       // PLP
+        0x69, 0x99, // ADC #99
+        0xEA,       // NOP
+        0x08,       // PHP
+        0xAA,       // TAX
+        0x68,       // PLA
+        0x49, 0xC2, // EOR #C2
+        0xEA,       // NOP
+    };
+    copy(0x0, prog, sizeof(prog));
+    start(0x0);
+    OP(2); TA(0xFF); TF(M6502_NF); // LDA #FF
+    OP(3); TF(M6502_NF);    // PHA
+    OP(2); TA(0x00); TF(M6502_ZF);  // LDA #00
+    OP(4); TF(M6502_NF|M6502_VF|M6502_DF|M6502_ZF|M6502_CF); // PLP
+    OP(2); TA(0x00); TF(M6502_NF|M6502_DF|M6502_CF);    // ADC #99
+    OP(2); TA(0x00); TF(M6502_NF|M6502_DF|M6502_CF);    // NOP
+    OP(3); TA(0x00); TF(M6502_NF|M6502_DF|M6502_CF);    // PHP
+    OP(2); TA(0x00); TX(0x00); TF(M6502_DF|M6502_ZF|M6502_CF);   // TAX
+    OP(4); TA(0xBD); TX(0x00); TF(M6502_NF|M6502_DF|M6502_CF);   // PLA
+    OP(2); TA(0x7F); TX(0x00); TF(M6502_DF|M6502_CF); // EOR #C2
+    OP(2); // NOP
+}
+
+UTEST(m6502_perfect, ADC_decimal_99_00) {
+    // http://visual6502.org/JSSim/expert.html?graphics=f&steps=56&a=0&d=a9fe48a999286900ea08aa6849c2ea
+    init();
+    uint8_t prog[] = {
+        0xA9, 0xFE, // LDA 0xFE
+        0x48,       // PHA
+        0xA9, 0x99, // LDA #99
+        0x28,       // PLP
+        0x69, 0x00, // ADC #00
+        0xEA,       // NOP
+        0x08,       // PHP
+        0xAA,       // TAX
+        0x68,       // PLA
+        0x49, 0xC2, // EOR #C2
+        0xEA,       // NOP
+    };
+    copy(0x0, prog, sizeof(prog));
+    start(0x0);
+    OP(2); TA(0xFE); TF(M6502_NF); // LDA #FE
+    OP(3); TF(M6502_NF);    // PHA
+    OP(2); TA(0x99); TF(M6502_NF);  // LDA #99
+    OP(4); TF(M6502_NF|M6502_VF|M6502_DF|M6502_ZF); // PLP
+    OP(2); TA(0x99); TF(M6502_NF|M6502_DF);    // ADC #00
+    OP(2); TA(0x99); TF(M6502_NF|M6502_DF);    // NOP
+    OP(3); TA(0x99); TF(M6502_NF|M6502_DF);    // PHP
+    OP(2); TA(0x99); TX(0x99); TF(M6502_NF|M6502_DF); // TAX
+    OP(4); TA(0xBC); TX(0x99); TF(M6502_NF|M6502_DF); // PLA
+    OP(2); TA(0x7E); TX(0x99); TF(M6502_DF); // EOR #C2
+    OP(2); // NOP
+}
+
+UTEST(m6502_perfect, ADC_decimal_00_99) {
+    // http://visual6502.org/JSSim/expert.html?graphics=f&steps=56&a=0&d=a9fe48a900286999ea08aa6849c2ea
+    init();
+    uint8_t prog[] = {
+        0xA9, 0xFE, // LDA 0xFE
+        0x48,       // PHA
+        0xA9, 0x00, // LDA #00
+        0x28,       // PLP
+        0x69, 0x99, // ADC #99
+        0xEA,       // NOP
+        0x08,       // PHP
+        0xAA,       // TAX
+        0x68,       // PLA
+        0x49, 0xC2, // EOR #C2
+        0xEA,       // NOP
+    };
+    copy(0x0, prog, sizeof(prog));
+    start(0x0);
+    OP(2); TA(0xFE); TF(M6502_NF); // LDA #FE
+    OP(3); TF(M6502_NF);    // PHA
+    OP(2); TA(0x00); TF(M6502_ZF);  // LDA #00
+    OP(4); TF(M6502_NF|M6502_VF|M6502_DF|M6502_ZF); // PLP
+    OP(2); TA(0x99); TF(M6502_NF|M6502_DF);    // ADC #99
+    OP(2); TA(0x99); TF(M6502_NF|M6502_DF);    // NOP
+    OP(3); TA(0x99); TF(M6502_NF|M6502_DF);    // PHP
+    OP(2); TA(0x99); TX(0x99); TF(M6502_NF|M6502_DF); // TAX
+    OP(4); TA(0xBC); TX(0x99); TF(M6502_NF|M6502_DF); // PLA
+    OP(2); TA(0x7E); TX(0x99); TF(M6502_DF); // EOR #C2
+    OP(2); // NOP
+}
+
+UTEST(m6502_perfect, SBC_decimal_0) {
+    // https://www.nesdev.org/wiki/Visual6502wiki/6502DecimalMode
+    // http://visual6502.org/JSSim/expert.html?graphics=f&steps=56&a=0&d=a94e48a90028e900ea08aa6849c2ea
+    init();
+    uint8_t prog[] = {
+        0xA9, 0x4E, // LDA #4E
+        0x48,       // PHA
+        0xA9, 0x00, // LDA #00,
+        0x28,       // PLP
+        0xE9, 0x00, // SBC #00
+        0xEA,       // NOP
+        0x08,       // PHP
+        0xAA,       // TAX
+        0x68,       // PLA
+        0x49, 0xC2, // EOR #C2
+        0xEA,       // NOP
+    };
+    copy(0x0, prog, sizeof(prog));
+    start(0x0);
+    OP(2); TA(0x4E); TF(0); // LDA #4D
+    OP(3); TF(0);           // PHA
+    OP(2); TA(0x00); TF(M6502_ZF); // LDA #00
+    OP(4); TF(M6502_VF|M6502_DF|M6502_ZF); // PLP
+    OP(2); TA(0x99); TF(M6502_NF|M6502_DF); // SBC #00
+    OP(2); TA(0x99); TF(M6502_NF|M6502_DF); // NOP
+    OP(3); TA(0x99); TF(M6502_NF|M6502_DF); // PHP
+    OP(2); TA(0x99); TX(0x99); TF(M6502_NF|M6502_DF); // TAX
+    OP(4); TA(0xBC); TX(0x99); TF(M6502_NF|M6502_DF); // PLA
+    OP(2); TA(0x7E); TX(0x99); TF(M6502_DF); // EOR #C2
+    OP(2); // NOP
+}
+
+UTEST(m6502_perfect, SBC_decimal_1) {
+    // https://www.nesdev.org/wiki/Visual6502wiki/6502DecimalMode
+    // http://visual6502.org/JSSim/expert.html?graphics=f&steps=56&a=0&d=a9c948a90028e900ea08aa6849c2ea
+    init();
+    uint8_t prog[] = {
+        0xA9, 0xC9, // LDA #C9
+        0x48,       // PHA
+        0xA9, 0x00, // LDA #00
+        0x28,       // PLP
+        0xE9, 0x00, // SBC #0
+        0xEA,       // NOP
+        0x08,       // PHP
+        0xAA,       // TAX
+        0x68,       // PLA
+        0x49, 0xC2, // EOR #C2
+        0xEA,       // NOP
+    };
+    copy(0x0, prog, sizeof(prog));
+    start(0x0);
+    OP(2); TA(0xC9); TF(M6502_NF); // LDA #C9
+    OP(3); TF(M6502_NF); // PHA
+    OP(2); TA(0x00); TF(M6502_ZF); // LDA #00
+    OP(4); TF(M6502_NF|M6502_VF|M6502_DF|M6502_CF); // PLP
+    OP(2); TA(0x00); TF(M6502_DF|M6502_ZF|M6502_CF); // SBC #00
+    OP(2); TA(0x00); TF(M6502_DF|M6502_ZF|M6502_CF); // NOP
+    OP(3); TA(0x00); TF(M6502_DF|M6502_ZF|M6502_CF); // PHP
+    OP(2); TA(0x00); TX(0x00); TF(M6502_DF|M6502_ZF|M6502_CF); // TAX
+    OP(4); TA(0x3B); TX(0x00); TF(M6502_DF|M6502_CF); // PLA
+    OP(2); TA(0xF9); TX(0x00); TF(M6502_NF|M6502_DF|M6502_CF); // EOR #C2
+    OP(2); // NOP
+}
+
+UTEST(m6502_perfect, SBC_decimal_2) {
+    // https://www.nesdev.org/wiki/Visual6502wiki/6502DecimalMode
+    // http://visual6502.org/JSSim/expert.html?graphics=f&steps=56&a=0&d=a97f48a90028e901ea08aa6849c2ea
+    init();
+    uint8_t prog[] = {
+        0xA9, 0x7F, // LDA #7F
+        0x48,       // PHA
+        0xA9, 0x00, // LDA #00
+        0x28,       // PLP
+        0xE9, 0x01, // SBC #01
+        0xEA,       // NOP
+        0x08,       // PHP
+        0xAA,       // TAX
+        0x68,       // PLA
+        0x49, 0xC2, // EOR #C2
+        0xEA,       // NOP
+    };
+    copy(0x0, prog, sizeof(prog));
+    start(0x0);
+    OP(2); TA(0x7F); TF(0); // LDA #7F
+    OP(3); TF(0); // PHA
+    OP(2); TA(0x00); TF(M6502_ZF); // LDA #00
+    OP(4); TF(M6502_VF|M6502_DF|M6502_ZF|M6502_CF); // PLP
+    OP(2); TA(0x99); TF(M6502_NF|M6502_DF); // SBC #01
+    OP(2); TA(0x99); TF(M6502_NF|M6502_DF); // NOP
+    OP(3); TA(0x99); TF(M6502_NF|M6502_DF); // PHP
+    OP(2); TA(0x99); TX(0x99); TF(M6502_NF|M6502_DF); // TAX
+    OP(4); TA(0xBC); TX(0x99); TF(M6502_NF|M6502_DF); // PLA
+    OP(2); TA(0x7E); TX(0x99); TF(M6502_DF); // EOR #C2
+    OP(2); // NOP
+}
+
+UTEST(m6502_perfect, SBC_decimal_3) {
+    // https://www.nesdev.org/wiki/Visual6502wiki/6502DecimalMode
+    // http://visual6502.org/JSSim/expert.html?graphics=f&steps=56&a=0&d=a9cb48a90a28e900ea08aa6849c2ea
+    init();
+    uint8_t prog[] = {
+        0xA9, 0xCB, // LDA #CB
+        0x48,       // PHA
+        0xA9, 0x0A, // LDA #0A
+        0x28,       // PLP
+        0xE9, 0x00, // SBC #00
+        0xEA,       // NOP
+        0x08,       // PHP
+        0xAA,       // TAX
+        0x68,       // PLA
+        0x49, 0xC2, // EOR #C2
+        0xEA,       // NOP
+    };
+    copy(0x0, prog, sizeof(prog));
+    start(0x0);
+    OP(2); TA(0xCB); TF(M6502_NF); // LDA #CB
+    OP(3); TF(M6502_NF); // PHA
+    OP(2); TA(0x0A); TF(0); // LDA #0A
+    OP(4); TF(M6502_NF|M6502_VF|M6502_DF|M6502_ZF|M6502_CF); // PLP
+    OP(2); TA(0x0A); TF(M6502_DF|M6502_CF); // SBC #00
+    OP(2); TA(0x0A); TF(M6502_DF|M6502_CF); // NOP
+    OP(3); TA(0x0A); TF(M6502_DF|M6502_CF); // PHP
+    OP(2); TA(0x0A); TX(0x0A); TF(M6502_DF|M6502_CF); // TAX
+    OP(4); TA(0x39); TX(0x0A); TF(M6502_DF|M6502_CF); // PLA
+    OP(2); TA(0xFB); TX(0x0A); TF(M6502_NF|M6502_DF|M6502_CF); // EOR #C2
+    OP(2); // NOP
+}
+
+UTEST(m6502_perfect, SBC_decimal_4) {
+    // https://www.nesdev.org/wiki/Visual6502wiki/6502DecimalMode
+    // http://visual6502.org/JSSim/expert.html?graphics=f&steps=56&a=0&d=a9ca48a90b28e900ea08aa6849c2ea
+    init();
+    uint8_t prog[] = {
+        0xA9, 0xCA, // LDA #CA
+        0x48,       // PHA
+        0xA9, 0x0B, // LDA #0B
+        0x28,       // PLP
+        0xE9, 0x00, // SBC #00
+        0xEA,       // NOP
+        0x08,       // PHP
+        0xAA,       // TAX
+        0x68,       // PLA
+        0x49, 0xC2, // EOR #C2
+        0xEA,       // NOP
+    };
+    copy(0x0, prog, sizeof(prog));
+    start(0x0);
+    OP(2); TA(0xCA); TF(M6502_NF); // LDA #CA
+    OP(3); TF(M6502_NF); // PHA
+    OP(2); TA(0x0B); TF(0); // LDA #0B
+    OP(4); TF(M6502_NF|M6502_VF|M6502_DF|M6502_ZF); // PLP
+    OP(2); TA(0x0A); TF(M6502_DF|M6502_CF); // SBC #00
+    OP(2); TA(0x0A); TF(M6502_DF|M6502_CF); // NOP
+    OP(3); TA(0x0A); TF(M6502_DF|M6502_CF); // PHP
+    OP(2); TA(0x0A); TX(0x0A); TF(M6502_DF|M6502_CF); // TAX
+    OP(4); TA(0x39); TX(0x0A); TF(M6502_DF|M6502_CF); // PLA
+    OP(2); TA(0xFB); TX(0x0A); TF(M6502_NF|M6502_DF|M6502_CF); // EOR #C2
+    OP(2); // NOP
+}
+
+UTEST(m6502_perfect, SBC_decimal_5) {
+    // https://www.nesdev.org/wiki/Visual6502wiki/6502DecimalMode
+    // http://visual6502.org/JSSim/expert.html?graphics=f&steps=56&a=0&d=a94b48a99a28e900ea08aa6849c2ea
+    init();
+    uint8_t prog[] = {
+        0xA9, 0x4B, // LDA #4B
+        0x48,       // PHA
+        0xA9, 0x9A, // LDA #9A
+        0x28,       // PLP
+        0xE9, 0x00, // SBC #00
+        0xEA,       // NOP
+        0x08,       // PHP
+        0xAA,       // TAX
+        0x68,       // PLA
+        0x49, 0xC2, // EOR #C2
+        0xEA,       // NOP
+    };
+    copy(0x0, prog, sizeof(prog));
+    start(0x0);
+    OP(2); TA(0x4B); TF(0); // LDA #4B
+    OP(3); TF(0); // PHA
+    OP(2); TA(0x9A); TF(M6502_NF); // LDA #9A
+    OP(4); TF(M6502_VF|M6502_DF|M6502_ZF|M6502_CF); // PLP
+    OP(2); TA(0x9A); TF(M6502_NF|M6502_DF|M6502_CF); // SBC #00
+    OP(2); TA(0x9A); TF(M6502_NF|M6502_DF|M6502_CF); // NOP
+    OP(3); TA(0x9A); TF(M6502_NF|M6502_DF|M6502_CF); // PHP
+    OP(2); TA(0x9A); TX(0x9A); TF(M6502_NF|M6502_DF|M6502_CF); // TAX
+    OP(4); TA(0xB9); TX(0x9A); TF(M6502_NF|M6502_DF|M6502_CF); // PLA
+    OP(2); TA(0x7B); TX(0x9A); TF(M6502_DF|M6502_CF); // EOR #C2
+    OP(2); // NOP
+}
+
+UTEST(m6502_perfect, SBC_decimal_6) {
+    // https://www.nesdev.org/wiki/Visual6502wiki/6502DecimalMode
+    // http://visual6502.org/JSSim/expert.html?graphics=f&steps=56&a=0&d=a94a48a99b28e900ea08aa6849c2ea
+    init();
+    uint8_t prog[] = {
+        0xA9, 0x4A, // LDA #4A
+        0x48,       // PHA
+        0xA9, 0x9B, // LDA #9B
+        0x28,       // PLP
+        0xE9, 0x00, // SBC #00
+        0xEA,       // NOP
+        0x08,       // PHP
+        0xAA,       // TAX
+        0x68,       // PLA
+        0x49, 0xC2, // EOR #C2
+        0xEA,       // NOP
+    };
+    copy(0x0, prog, sizeof(prog));
+    start(0x0);
+    OP(2); TA(0x4A); TF(0); // LDA #4A
+    OP(3); TF(0); // PHA
+    OP(2); TA(0x9B); TF(M6502_NF); // LDA #9B
+    OP(4); TF(M6502_VF|M6502_DF|M6502_ZF); // PLP
+    OP(2); TA(0x9A); TF(M6502_NF|M6502_DF|M6502_CF); // SBC #00
+    OP(2); TA(0x9A); TF(M6502_NF|M6502_DF|M6502_CF); // NOP
+    OP(3); TA(0x9A); TF(M6502_NF|M6502_DF|M6502_CF); // PHP
+    OP(2); TA(0x9A); TX(0x9A); TF(M6502_NF|M6502_DF|M6502_CF); // TAX
+    OP(4); TA(0xB9); TX(0x9A); TF(M6502_NF|M6502_DF|M6502_CF); // PLA
+    OP(2); TA(0x7B); TX(0x9A); TF(M6502_DF|M6502_CF); // EOR #C2
+    OP(2); // NOP
 }
 
 UTEST_MAIN();

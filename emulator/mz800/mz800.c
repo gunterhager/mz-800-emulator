@@ -5,8 +5,9 @@
 //
 //------------------------------------------------------------------------------
 
-#include "common.h"
 #define CHIPS_IMPL
+#include "chips/chips_common.h"
+#include "common.h"
 #include "chips/z80.h"
 #include "chips/z80pio.h"
 #include "chips/i8255.h"
@@ -101,16 +102,21 @@ void ui_draw_cb(void) {
 
 /* one-time application init */
 void app_init() {
-	gfx_init(&(gfx_desc_t){
-		#ifdef CHIPS_USE_UI
-		.draw_extra_cb = ui_draw,
-		#endif
-		.border_left = BORDER_LEFT,
-		.border_right = BORDER_RIGHT,
-		.border_top = BORDER_TOP,
-		.border_bottom = BORDER_BOTTOM,
-		.emu_aspect_y = 2
-	});
+    gfx_init(&(gfx_desc_t){
+#ifdef CHIPS_USE_UI
+        .draw_extra_cb = ui_draw,
+#endif
+        .border = {
+            .left = BORDER_LEFT,
+            .right = BORDER_RIGHT,
+            .top = BORDER_TOP,
+            .bottom = BORDER_BOTTOM,
+        },
+            .pixel_aspect = {
+                .width = 1,
+                .height = 2,
+            }
+    });
 
 	keybuf_init(&(keybuf_desc_t) { .key_delay_frames = 7 });
     clock_init();

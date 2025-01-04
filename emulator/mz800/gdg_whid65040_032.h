@@ -47,6 +47,7 @@ typedef struct gdg_whid65040_032_crt_t {
 
 typedef struct {
 	/// NTSC/PAL selection
+	/// Set to false for PAL.
 	bool ntpl;
 
 	/// Character ROM
@@ -61,7 +62,7 @@ typedef struct {
 typedef struct {
 	/// NTSC/PAL selection
 	/// Set via jumper on the MZ-800 main board.
-	/// Set to true for PAL.
+	/// Set to false for PAL.
 	bool ntpl;
 
 	/// CPU clock
@@ -155,7 +156,7 @@ typedef struct {
  WR
  IORQ
  M1
- NPL ... NTSC/PAL selection, low for PAL
+ NTPL ... NTSC/PAL selection, low for PAL
  MOD7 ... MZ-700/800 mode selection, low for MZ-700 mode
  MNRT ... Manual reset
  WTGD ... Wait signal to CPU
@@ -215,10 +216,10 @@ void gdg_whid65040_032_decode_vram_mz700(gdg_whid65040_032_t* gdg, uint16_t addr
 #define GDG_CLK0_NTSC (14318180) // 14.31818 MHZ
 
 // Derived frequencies PAL
-#define GDG_CPU_CLK_PAL (GDG_CLK0_PAL / 5)     // 3.546895 MHz
+#define GDG_CPU_CLK_PAL  (GDG_CLK0_PAL / 5)    // 3.546895 MHz
 #define GDG_CTC_CLK0_PAL (GDG_CLK0_PAL / 16)   // 1.1084 MHz (CKMS)
 #define GDG_CTC_CLK1_PAL (GDG_CLK0_PAL / 1136) // 15.611 kHz (HSYN)
-#define GDG_VSYN_PAL (GDG_CTC_CH1_PAL / 312)   // 50.036 Hz (VSYN)
+#define GDG_VSYN_PAL  (GDG_CTC_CH1_PAL / 312)  // 50.036 Hz (VSYN)
 
 // Derived frequencies NTSC
 #define GDG_CPU_CLK_NTSC (GDG_CLK0_NTSC / 4)   // 3.579545 MHz
@@ -324,7 +325,7 @@ uint64_t gdg_whid65040_032_tick(gdg_whid65040_032_t *gdg, uint64_t pins) {
 
 /// Setup frequencies based on NTPL pin
 static void _gdg_whid65040_032_setup_freq(gdg_whid65040_032_t* gdg) {
-	gdg->cpu_clk0 = gdg->ntpl ? GDG_CPU_CLK_PAL: GDG_CPU_CLK_NTSC;
+	gdg->cpu_clk0 = gdg->ntpl ? GDG_CPU_CLK_NTSC: GDG_CPU_CLK_PAL;
 }
 
 // MARK: - IO request

@@ -1,6 +1,7 @@
 /*
 	UI implementation for mz800.c, this must live in its own .cc file.
 */
+#include "chips/chips_common.h"
 #include "chips/z80.h"
 #include "chips/z80pio.h"
 #include "chips/i8255.h"

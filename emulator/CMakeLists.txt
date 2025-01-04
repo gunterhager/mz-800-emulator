@@ -1,5 +1,6 @@
 include_directories(common roms)
 add_subdirectory(common)
 add_subdirectory(mz800)
+add_subdirectory(sokol)
 fips_ide_group(roms)
 add_subdirectory(roms)

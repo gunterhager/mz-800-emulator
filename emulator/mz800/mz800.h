@@ -6,6 +6,7 @@
 //  Created by Gunter Hager on 21.07.18.
 //
 
+#include "chips/chips_common.h"
 #include "chips/z80.h"
 #include "chips/z80pio.h"
 #include "chips/i8255.h"
@@ -216,7 +217,7 @@ void mz800_init(mz800_t* sys, mz800_desc_t* desc) {
 	z80pio_init(&sys->pio);
 	i8255_init(&sys->ppi);
 	gdg_whid65040_032_desc_t gdg_desc = (gdg_whid65040_032_desc_t) {
-		.ntpl = true,
+		.ntpl = false, // PAL
 		.cgrom = sys->cgrom,
 		.rgba8_buffer = desc->pixel_buffer.ptr,
 		.rgba8_buffer_size = desc->pixel_buffer.size
