@@ -2,7 +2,7 @@ find_package(XCTest REQUIRED)
 
 fips_begin_app(MZ-800-Emulator windowed)
 #    
-    fips_files(mz800.c mz800.h ui_mz800.h)
+    fips_files(mz800.c mz800.h ui_mz800.h mz800-ui-impl.cc)
     fips_files(mzf.h)
     fips_files(gdg_whid65040_032.h ui_gdg_whid65040_032.h)
     if (FIPS_IOS)

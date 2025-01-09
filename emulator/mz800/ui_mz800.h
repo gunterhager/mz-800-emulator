@@ -15,10 +15,8 @@ extern "C" {
 
 typedef struct {
 	mz800_t* mz800;
-	ui_dbg_create_texture_t create_texture_cb;      /* texture creation callback for ui_dbg_t */
-	ui_dbg_update_texture_t update_texture_cb;      /* texture update callback for ui_dbg_t */
-	ui_dbg_destroy_texture_t destroy_texture_cb;    /* texture destruction callback for ui_dbg_t */
-	ui_dbg_keys_desc_t dbg_keys;          /* user-defined hotkeys for ui_dbg_t */
+    ui_dbg_texture_callbacks_t dbg_texture; /* texture callbacks for ui_dbg_t */
+	ui_dbg_keys_desc_t dbg_keys;            /* user-defined hotkeys for ui_dbg_t */
 } ui_mz800_desc_t;
 
 typedef struct {
@@ -41,6 +39,7 @@ void ui_mz800_init(ui_mz800_t* ui, const ui_mz800_desc_t* ui_desc);
 void ui_mz800_discard(ui_mz800_t* ui);
 void ui_mz800_draw(ui_mz800_t* ui);
 mz800_debug_t ui_mz800_get_debug(ui_mz800_t* ui);
+static void ui_save_settings_cb(ui_settings_t* settings);
 
 #ifdef __cplusplus
 } /* extern "C" */
@@ -335,10 +334,11 @@ static void _ui_mz800_draw_menu(ui_mz800_t* ui) {
 			ImGui::EndMenu();
 		}
 		if (ImGui::BeginMenu("Debug")) {
-			ImGui::MenuItem("CPU Debugger", 0, &ui->dbg.ui.open);
-			ImGui::MenuItem("Breakpoints", 0, &ui->dbg.ui.show_breakpoints);
-			ImGui::MenuItem("Execution History", 0, &ui->dbg.ui.show_history);
-			ImGui::MenuItem("Memory Heatmap", 0, &ui->dbg.ui.show_heatmap);
+            ImGui::MenuItem("CPU Debugger", 0, &ui->dbg.ui.open);
+            ImGui::MenuItem("Breakpoints", 0, &ui->dbg.ui.breakpoints.open);
+            ImGui::MenuItem("Stopwatch", 0, &ui->dbg.ui.stopwatch.open);
+            ImGui::MenuItem("Execution History", 0, &ui->dbg.ui.history.open);
+            ImGui::MenuItem("Memory Heatmap", 0, &ui->dbg.ui.heatmap.open);
 			if (ImGui::BeginMenu("Memory Editor")) {
 				ImGui::MenuItem("Window #1", 0, &ui->memedit[0].open);
 				ImGui::MenuItem("Window #2", 0, &ui->memedit[1].open);
@@ -421,10 +421,8 @@ void ui_mz800_init(ui_mz800_t* ui, const ui_mz800_desc_t* ui_desc) {
 		desc.z80 = &ui->mz800->cpu;
 		desc.read_cb = _ui_mz800_mem_read;
 		desc.break_cb = _ui_mz800_eval_bp;
-		desc.create_texture_cb = ui_desc->create_texture_cb;
-		desc.update_texture_cb = ui_desc->update_texture_cb;
-		desc.destroy_texture_cb = ui_desc->destroy_texture_cb;
-		desc.keys = ui_desc->dbg_keys;
+        desc.texture_cbs = ui_desc->dbg_texture;
+        desc.keys = ui_desc->dbg_keys;
 		desc.user_data = ui;
 		/* custom breakpoint types */
 		desc.user_breaktypes[0].label = "Scanline at";

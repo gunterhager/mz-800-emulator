@@ -18,16 +18,23 @@
 #include "util/z80dasm.h"
 #define CHIPS_UI_IMPL
 #include "imgui.h"
+#include "imgui_internal.h"
 #include "ui/ui_util.h"
+#include "ui/ui_settings.h"
 #include "ui/ui_chip.h"
 #include "ui/ui_memedit.h"
 #include "ui/ui_memmap.h"
 #include "ui/ui_dasm.h"
 #include "ui/ui_dbg.h"
+
 #include "ui/ui_z80.h"
 #include "ui/ui_z80pio.h"
 #include "ui/ui_i8255.h"
 #include "ui_gdg_whid65040_032.h"
+
 #include "ui/ui_audio.h"
+#include "ui/ui_display.h"
 #include "ui/ui_kbd.h"
+#include "ui/ui_snapshot.h"
+
 #include "ui_mz800.h"

@@ -55,6 +55,7 @@ static struct {
 #define BORDER_LEFT (8)
 #define BORDER_RIGHT (8)
 #define BORDER_BOTTOM (32)
+#define LOAD_DELAY_FRAMES (180)
 
 // MARK: - Function declarations
 
@@ -78,7 +79,6 @@ static void push_audio(const float* samples, int num_samples, void* user_data) {
 
 mz800_desc_t mz800_desc() {
 	return (mz800_desc_t) {
-		.pixel_buffer = { .ptr = gfx_framebuffer(), .size = gfx_framebuffer_size() },
 		.audio = {
 			.callback = { .func = push_audio },
 			.sample_rate = saudio_sample_rate(),
@@ -95,44 +95,58 @@ mz800_desc_t mz800_desc() {
 }
 
 #if defined(CHIPS_USE_UI)
-void ui_draw_cb(void) {
+static void ui_draw_cb(const ui_draw_info_t* draw_info) {
 	ui_mz800_draw(&state.ui_mz800);
+}
+
+static void ui_save_settings_cb(ui_settings_t* settings) {
+    // TODO: Implement save settings
+//    ui_mz800_save_settings(&state.ui_mz800, settings);
 }
 #endif
 
 /* one-time application init */
 void app_init() {
+    saudio_setup(&(saudio_desc){0});
+    mz800_desc_t desc = mz800_desc();
+    mz800_init(&state.mz800, &desc);
+
     gfx_init(&(gfx_desc_t){
-#ifdef CHIPS_USE_UI
+        .disable_speaker_icon = sargs_exists("disable-speaker-icon"),
+        #ifdef CHIPS_USE_UI
         .draw_extra_cb = ui_draw,
-#endif
+        #endif
         .border = {
             .left = BORDER_LEFT,
             .right = BORDER_RIGHT,
             .top = BORDER_TOP,
             .bottom = BORDER_BOTTOM,
         },
-            .pixel_aspect = {
-                .width = 1,
-                .height = 2,
-            }
+        .pixel_aspect = {
+            .width = 1,
+            .height = 2,
+        },
+        .display_info = mz800_display_info(&state.mz800)
     });
 
-	keybuf_init(&(keybuf_desc_t) { .key_delay_frames = 7 });
+	keybuf_init(&(keybuf_desc_t) { .key_delay_frames = 5 });
     clock_init();
 	prof_init();
-    saudio_setup(&(saudio_desc){0});
     fs_init();
 
-	mz800_desc_t desc = mz800_desc();
-    mz800_init(&state.mz800, &desc);
 #ifdef CHIPS_USE_UI
-	ui_init(ui_draw_cb);
-	ui_mz800_init(&state.ui_mz800, &(ui_mz800_desc_t){
+    ui_init(&(ui_desc_t){
+        .draw_cb = ui_draw_cb,
+        .save_settings_cb = ui_save_settings_cb,
+        .imgui_ini_key = "gupi.mz800",
+    });
+    ui_mz800_init(&state.ui_mz800, &(ui_mz800_desc_t){
 		.mz800 = &state.mz800,
-		.create_texture_cb = gfx_create_texture,
-		.update_texture_cb = gfx_update_texture,
-		.destroy_texture_cb = gfx_destroy_texture,
+        .dbg_texture = {
+            .create_cb = ui_create_texture,
+            .update_cb = ui_update_texture,
+            .destroy_cb = ui_destroy_texture,
+        },
 		.dbg_keys = {
 			.cont = { .keycode = SAPP_KEYCODE_F5, .name = "F5" },
 			.stop = { .keycode = SAPP_KEYCODE_F5, .name = "F5" },
@@ -147,7 +161,7 @@ void app_init() {
 	bool delay_input = false;
 	if (sargs_exists("file")) {
 		delay_input = true;
-		fs_start_load_file(sargs_value("file"));
+        fs_load_file_async(FS_CHANNEL_IMAGES, sargs_value("file"));
 	}
 	if (!delay_input) {
 		if (sargs_exists("input")) {
@@ -167,12 +181,12 @@ void app_frame() {
 	state.ticks = mz800_exec(&state.mz800, state.frame_time_us);
 	state.emu_time_ms = stm_ms(stm_since(emu_start_time));
 	draw_status_bar();
-	gfx_draw(MZ800_DISP_WIDTH, MZ800_DISP_HEIGHT);
+    gfx_draw(mz800_display_info(&state.mz800));
 
     /* load MZF file? */
 	handle_file_loading();
 
-#warning "TODO: implement keyboard input"
+#warning TODO: implement keyboard input
 //	send_keybuf_input();
 }
 
@@ -180,7 +194,7 @@ void app_frame() {
 void app_input(const sapp_event* event) {
 	// accept dropped files also when ImGui grabs input
 	if (event->type == SAPP_EVENTTYPE_FILES_DROPPED) {
-		fs_start_load_dropped_file();
+        fs_load_dropped_file_async(FS_CHANNEL_IMAGES);
 	}
 #ifdef CHIPS_USE_UI
 	if (ui_input(event)) {
@@ -210,20 +224,48 @@ sapp_desc sokol_main(int argc, char* argv[]) {
 		.frame_cb = app_frame,
 		.event_cb = app_input,
 		.cleanup_cb = app_cleanup,
-		.width = MZ800_DISP_WIDTH + BORDER_LEFT + BORDER_RIGHT,
-		.height = 2 * MZ800_DISP_HEIGHT + BORDER_TOP + BORDER_BOTTOM,
+		.width = MZ800_DISPLAY_WIDTH + BORDER_LEFT + BORDER_RIGHT,
+		.height = 2 * MZ800_DISPLAY_HEIGHT + BORDER_TOP + BORDER_BOTTOM,
 		.window_title = "MZ-800",
 		.icon.sokol_default = true,
 		.enable_dragndrop = true
 	};
 }
 
+// MARK: - Display
+
+chips_display_info_t mz800_display_info(mz800_t* sys) {
+    const chips_display_info_t res = {
+        .frame = {
+            .dim = {
+                .width = MZ800_DISPLAY_WIDTH,
+                .height = MZ800_DISPLAY_HEIGHT,
+            },
+            .buffer = {
+                .ptr = sys ? sys->fb : 0,
+                .size = MZ800_FRAMEBUFFER_SIZE_BYTES,
+            },
+            .bytes_per_pixel = 4,
+        },
+        .screen = {
+            .x = 0,
+            .y = 0,
+            .width = MZ800_DISPLAY_WIDTH,
+            .height = MZ800_DISPLAY_HEIGHT,
+        }
+    };
+    CHIPS_ASSERT(((sys == 0) && (res.frame.buffer.ptr == 0)) || ((sys != 0) && (res.frame.buffer.ptr != 0)));
+    return res;
+}
+
+
 // MARK: - File loading
 static void handle_file_loading(void) {
 	fs_dowork();
-	const uint32_t load_delay_frames = 120;
-	if (fs_ptr() && (clock_frame_count_60hz() > load_delay_frames)) {
-		bool load_success = mzf_load(fs_ptr(), fs_size(), &state.mz800, state.mz800.dram);
+    const uint32_t load_delay_frames = LOAD_DELAY_FRAMES;
+    if (fs_success(FS_CHANNEL_IMAGES) && (clock_frame_count_60hz() > load_delay_frames)) {
+        chips_range_t data = fs_data(FS_CHANNEL_IMAGES);
+		bool load_success = mzf_load(data.ptr, data.size, &state.mz800, state.mz800.dram);
 		if (load_success) {
 			if (clock_frame_count_60hz() > (load_delay_frames + 10)) {
 				gfx_flash_success();
@@ -235,7 +277,7 @@ static void handle_file_loading(void) {
 		else {
 			gfx_flash_error();
 		}
-		fs_reset();
+        fs_reset(FS_CHANNEL_IMAGES);
 	}
 }
 

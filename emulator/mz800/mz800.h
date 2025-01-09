@@ -18,6 +18,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdalign.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -42,20 +43,9 @@ typedef struct {
 	bool* stopped;
 } mz800_debug_t;
 
-typedef struct {
-	const void* ptr;
-	size_t size;
-} mz800_rom_image_t;
-
 // configuration parameters for mz800_init()
 typedef struct {
 	mz800_debug_t debug;
-
-	// video output config
-	struct {
-		void* ptr;              // pointer to a linear RGBA8 pixel buffer
-		size_t size;            // size of the pixel buffer in bytes
-	} pixel_buffer;
 
 	// audio output config (if you don't want audio, set callback.func to zero)
 	struct {
@@ -67,9 +57,9 @@ typedef struct {
 
 	// ROM images
 	struct {
-		mz800_rom_image_t rom1;
-		mz800_rom_image_t rom2;
-		mz800_rom_image_t cgrom; // Character ROM
+        chips_range_t rom1;
+        chips_range_t rom2;
+        chips_range_t cgrom; // character ROM
 	} roms;
 } mz800_desc_t;
 
@@ -96,6 +86,13 @@ typedef struct {
 // MZ-700 Memory mapped IO
 #define MZ700_IO_START    0xe000
 #define MZ700_IO_END      0xe009
+
+// Display size
+#define MZ800_DISPLAY_WIDTH (640)
+#define MZ800_DISPLAY_HEIGHT (200)
+#define MZ800_FRAMEBUFFER_SIZE_PIXEL (MZ800_DISPLAY_WIDTH * MZ800_DISPLAY_HEIGHT)
+#define MZ800_FRAMEBUFFER_BYTES_PER_PIXEL (4)
+#define MZ800_FRAMEBUFFER_SIZE_BYTES (MZ800_FRAMEBUFFER_SIZE_PIXEL * MZ800_FRAMEBUFFER_BYTES_PER_PIXEL)
 
 typedef struct {
 
@@ -143,6 +140,9 @@ typedef struct {
 
 	// RAM (64K)
 	uint8_t dram[0x10000]; // 0x0000-0xffff
+    
+    // Frame buffer
+    alignas(64) uint32_t fb[MZ800_FRAMEBUFFER_SIZE_PIXEL];
 
 	// HALT callback
 	void (*halt_cb)(z80_t *cpu);
@@ -181,6 +181,8 @@ uint32_t mz800_exec(mz800_t* sys, uint32_t micro_seconds);
 static uint64_t mz800_cpu_tick(mz800_t* sys, uint64_t cpu_pins);
 static uint64_t mz800_cpu_iorq(mz800_t* sys, uint64_t cpu_pins);
 
+chips_display_info_t mz800_display_info(mz800_t* sys);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif
@@ -195,10 +197,6 @@ static uint64_t mz800_cpu_iorq(mz800_t* sys, uint64_t cpu_pins);
 #endif
 
 #define NOT_IMPLEMENTED false
-
-// Display size
-#define MZ800_DISP_WIDTH (640)
-#define MZ800_DISP_HEIGHT (200)
 
 #define _MZ800_DEFAULT(val,def) (((val) != 0) ? (val) : (def))
 
@@ -219,8 +217,8 @@ void mz800_init(mz800_t* sys, mz800_desc_t* desc) {
 	gdg_whid65040_032_desc_t gdg_desc = (gdg_whid65040_032_desc_t) {
 		.ntpl = false, // PAL
 		.cgrom = sys->cgrom,
-		.rgba8_buffer = desc->pixel_buffer.ptr,
-		.rgba8_buffer_size = desc->pixel_buffer.size
+        .rgba8_buffer = (uint32_t *)sys->fb,
+        .rgba8_buffer_size = MZ800_FRAMEBUFFER_SIZE_PIXEL
 	};
 	gdg_whid65040_032_init(&sys->gdg, &gdg_desc);
 	mem_init(&sys->mem);
@@ -504,7 +502,7 @@ static uint64_t mz800_cpu_iorq(mz800_t* sys, uint64_t cpu_pins) {
 	}
 	// PPI i8255, keyboard and cassette driver
 	else if (IN_RANGE(address, 0xd0, 0xd3)) {
-#warning "TODO: continue implementation of i8255 pins"
+#warning TODO: continue implementation of i8255 pins
 		uint64_t ppi_pins = (cpu_pins & Z80_PIN_MASK & ~I8255_PC_PINS) | I8255_CS;
 		ppi_pins = i8255_tick(&sys->ppi, ppi_pins);
 		// Copy data bus value to cpu pins
@@ -549,7 +547,7 @@ static uint64_t mz800_cpu_iorq(mz800_t* sys, uint64_t cpu_pins) {
 	}
 	// PIO Z80 PIO, parallel I/O unit
 	else if (IN_RANGE(address, 0xfc, 0xff)) {
-#warning "TODO: continue implementation of Z80 PIO pins"
+#warning TODO: continue implementation of Z80 PIO pins
 		cpu_pins = z80pio_tick(&sys->pio, cpu_pins);
 	}
 	// DEBUG

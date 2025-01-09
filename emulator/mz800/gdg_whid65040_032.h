@@ -439,7 +439,8 @@ void _gdg_whid65040_032_update_border(gdg_whid65040_032_t* gdg) {
 		.g = (float)(0xff & (mz_color >> 8)),
 		.b = (float)(0xff & (mz_color >> 16))
 	};
-	gfx_set_border(color);
+#warning TODO: Implement border color
+	// gfx_set_border(color);
 }
 
 // MARK: - VRAM
@@ -459,7 +460,7 @@ uint8_t gdg_whid65040_032_mem_rd(gdg_whid65040_032_t* gdg, uint16_t addr) {
 		return gdg->vram[addr];
 	} else {
 		return 0;
-#warning "TODO: mem_rd: Implement"
+#warning TODO: mem_rd: Implement
 
 		uint8_t plane_select = gdg->rf & 0x0f;
 		bool is_searching = gdg->rf & (1 << 7);
@@ -606,7 +607,7 @@ void gdg_whid65040_032_set_rf(gdg_whid65040_032_t* gdg, uint8_t value) {
 	bool use_frame_b = value & 0x10;
 
 	// Set read planes mask here
-#warning "TODO: set_rf: Implement setting read planes mask"
+#warning TODO: set_rf: Implement setting read planes mask
 }
 
 
