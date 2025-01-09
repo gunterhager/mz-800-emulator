@@ -96,7 +96,9 @@ mz800_desc_t mz800_desc() {
 
 #if defined(CHIPS_USE_UI)
 static void ui_draw_cb(const ui_draw_info_t* draw_info) {
-	ui_mz800_draw(&state.ui_mz800);
+    ui_mz800_draw(&state.ui_mz800, &(ui_mz800_frame_t){
+        .display = draw_info->display
+    });
 }
 
 static void ui_save_settings_cb(ui_settings_t* settings) {

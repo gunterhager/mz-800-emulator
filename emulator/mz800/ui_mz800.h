@@ -28,6 +28,7 @@ typedef struct {
 	ui_i8255_t ppi;
 	ui_gdg_whid65040_032_t gdg;
 	ui_audio_t audio;
+    ui_display_t display;
 	ui_kbd_t kbd;
 	ui_memmap_t memmap;
 	ui_memedit_t memedit[4];
@@ -35,9 +36,13 @@ typedef struct {
 	ui_dbg_t dbg;
 } ui_mz800_t;
 
+typedef struct {
+    ui_display_frame_t display;
+} ui_mz800_frame_t;
+
 void ui_mz800_init(ui_mz800_t* ui, const ui_mz800_desc_t* ui_desc);
 void ui_mz800_discard(ui_mz800_t* ui);
-void ui_mz800_draw(ui_mz800_t* ui);
+void ui_mz800_draw(ui_mz800_t* ui, const ui_mz800_frame_t* frame);
 mz800_debug_t ui_mz800_get_debug(ui_mz800_t* ui);
 static void ui_save_settings_cb(ui_settings_t* settings);
 
@@ -327,6 +332,7 @@ static void _ui_mz800_draw_menu(ui_mz800_t* ui) {
 			ImGui::MenuItem("Memory Map", 0, &ui->memmap.open);
 			ImGui::MenuItem("Keyboard Matrix", 0, &ui->kbd.open);
 			ImGui::MenuItem("Audio Output", 0, &ui->audio.open);
+            ImGui::MenuItem("Display", 0, &ui->display.open);
 			ImGui::MenuItem("Z80 (CPU)", 0, &ui->cpu.open);
 			ImGui::MenuItem("Z80 (PIO)", 0, &ui->pio.open);
 			ImGui::MenuItem("i8255 (PPI)", 0, &ui->ppi.open);
@@ -482,6 +488,14 @@ void ui_mz800_init(ui_mz800_t* ui, const ui_mz800_desc_t* ui_desc) {
 		desc.y = y;
 		ui_audio_init(&ui->audio, &desc);
 	}
+    x += dx; y += dy;
+    {
+        ui_display_desc_t desc = {0};
+        desc.title = "Display";
+        desc.x = x;
+        desc.y = y;
+        ui_display_init(&ui->display, &desc);
+    }
 	x += dx; y += dy;
 	{
 		ui_kbd_desc_t desc = {0};
@@ -544,6 +558,7 @@ void ui_mz800_discard(ui_mz800_t* ui) {
 	ui_i8255_discard(&ui->ppi);
 	ui_gdg_whid65040_032_discard(&ui->gdg);
 	ui_kbd_discard(&ui->kbd);
+    ui_display_discard(&ui->display);
 	ui_audio_discard(&ui->audio);
 	ui_memmap_discard(&ui->memmap);
 	for (int i = 0; i < 4; i++) {
@@ -553,13 +568,14 @@ void ui_mz800_discard(ui_mz800_t* ui) {
 	ui_dbg_discard(&ui->dbg);
 }
 
-void ui_mz800_draw(ui_mz800_t* ui) {
+void ui_mz800_draw(ui_mz800_t* ui, const ui_mz800_frame_t* frame) {
 	CHIPS_ASSERT(ui && ui->mz800);
 	_ui_mz800_draw_menu(ui);
 	if (ui->memmap.open) {
 		_ui_mz800_update_memmap(ui);
 	}
 	ui_audio_draw(&ui->audio, ui->mz800->audio.sample_pos);
+    ui_display_draw(&ui->display, &frame->display);
 	ui_kbd_draw(&ui->kbd);
 	ui_z80_draw(&ui->cpu);
 	ui_z80pio_draw(&ui->pio);
