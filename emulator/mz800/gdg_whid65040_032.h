@@ -178,12 +178,12 @@ typedef struct {
 #define  GDG_PIN_INT   (30)       /* interrupt request */
 #define  GDG_PIN_RESET (31)       /* put GDG into reset state (same as Z80 reset) */
 
-#define  GDG_M1    (1ULL<<GDG_PIN_M1)       /* machine cycle 1 */
-#define  GDG_IORQ  (1ULL<<GDG_PIN_IORQ)     /* input/output request */
-#define  GDG_RD    (1ULL<<GDG_PIN_RD)       /* read */
-#define  GDG_WR    (1ULL<<GDG_PIN_WR)       /* write */
-#define  GDG_INT   (1ULL<<GDG_PIN_INT)      /* interrupt request */
-#define  GDG_RESET (1ULL<<GDG_PIN_RESET)    /* put GDG into reset state (same as Z80 reset) */
+#define  GDG_M1    (1ULL<<GDG_PIN_M1)
+#define  GDG_IORQ  (1ULL<<GDG_PIN_IORQ)
+#define  GDG_RD    (1ULL<<GDG_PIN_RD)
+#define  GDG_WR    (1ULL<<GDG_PIN_WR)
+#define  GDG_INT   (1ULL<<GDG_PIN_INT)
+#define  GDG_RESET (1ULL<<GDG_PIN_RESET)
 
 
 #define GDG_Z80_GET_ADDR(p) ((uint16_t)(p))
@@ -242,9 +242,26 @@ void gdg_whid65040_032_decode_vram_mz700(gdg_whid65040_032_t* gdg, uint16_t addr
 #define GDG_CTC_CH1_NTSC (GDG_CLK0_NTSC / 912) // 15.7 kHz (HSYN)
 #define GDG_VSYN_NTSC (GDG_CTC_CH1_NTSC / 262) // 59.922 Hz (VSYN)
 
+// GDG IO IN addresses
+#define GDG_IO_IN_ADDR_WF   (0x00cc)
+#define GDG_IO_IN_ADDR_RF   (0x00cd)
+#define GDG_IO_IN_ADDR_DMD  (0x00ce)
+#define GDG_IO_IN_ADDR_SOF1 (0x01cf)
+#define GDG_IO_IN_ADDR_SOF2 (0x02cf)
+#define GDG_IO_IN_ADDR_SW   (0x03cf)
+#define GDG_IO_IN_ADDR_SSA  (0x04cf)
+#define GDG_IO_IN_ADDR_SEA  (0x05cf)
+#define GDG_IO_IN_ADDR_BCOL (0x06cf)
+#define GDG_IO_IN_ADDR_CKSW (0x07cf)
+#define GDG_IO_IN_ADDR_PAL  (0x00f0)
+
+// GDG IO OUT addresses
+#define GDG_IO_OUT_ADDR_STATUS (0xce)
+
+
 // Color definition helpers
-#define CI0 (0x78)
-#define CI1 (0xdf)
+#define CI0 (0x78) // color intensity low
+#define CI1 (0xdf) // color intensity high
 #define CI(i) ((i) ? CI1 : CI0)
 #define COLOR_IGRB_TO_ABGR(i, g, r, b) (0xff000000 | (((b) * CI(i)) << 16) | (((g) * CI(i)) << 8) | ((r) * CI(i)))
 
@@ -362,7 +379,7 @@ static uint64_t _gdg_whid65040_032_iorq(gdg_whid65040_032_t* gdg, uint64_t pins)
 	// Read
 	if (pins & GDG_RD) {
 		// Display status register
-		if (low_address == 0x00ce) {
+        if (low_address == GDG_IO_OUT_ADDR_STATUS) {
 			GDG_Z80_SET_DATA(outpins, gdg->status);
 		}
 		// DEBUG
@@ -374,50 +391,50 @@ static uint64_t _gdg_whid65040_032_iorq(gdg_whid65040_032_t* gdg, uint64_t pins)
 	// Write
 	else if (pins & GDG_WR) {
 		// Write format register
-		if (low_address == 0x00cc) {
+		if (low_address == GDG_IO_IN_ADDR_WF) {
 			uint8_t value = GDG_Z80_GET_DATA(pins);
 			gdg_whid65040_032_set_wf(gdg, value);
 		}
 		// Read format register
-		else if (low_address == 0x00cd) {
+		else if (low_address == GDG_IO_IN_ADDR_RF) {
 			gdg->rf = GDG_Z80_GET_DATA(pins) & 0x9f; // Bits 5, 6 can't be set
 		}
 		// Display mode register
-		else if (low_address == 0x00ce) {
+		else if (low_address == GDG_IO_IN_ADDR_DMD) {
 			uint8_t value = GDG_Z80_GET_DATA(pins) & 0x0f; // Only the lower nibble can be set
 			gdg_whid65040_032_set_dmd(gdg, value);
 		}
 		// Scroll offset register 1
-		else if (address == 0x01cf) {
+        else if (address == GDG_IO_IN_ADDR_SOF1) {
 			gdg->sof1 = GDG_Z80_GET_DATA(pins);
 		}
 		// Scroll offset register 2
-		else if (address == 0x02cf) {
+		else if (address == GDG_IO_IN_ADDR_SOF2) {
 			gdg->sof2 = GDG_Z80_GET_DATA(pins) & 0x03; // Only bits 0, 1 can be set
 		}
 		// Scroll width register
-		else if (address == 0x03cf) {
+        else if (address == GDG_IO_IN_ADDR_SW) {
 			gdg->sw = GDG_Z80_GET_DATA(pins) & 0x7f; // Bit 7 can't be set
 		}
 		// Scroll start address register
-		else if (address == 0x04cf) {
+        else if (address == GDG_IO_IN_ADDR_SSA) {
 			gdg->ssa = GDG_Z80_GET_DATA(pins) & 0x7f; // Bit 7 can't be set
 		}
 		// Scroll end address register
-		else if (address == 0x05cf) {
+        else if (address == GDG_IO_IN_ADDR_SEA) {
 			gdg->sea = GDG_Z80_GET_DATA(pins) & 0x7f; // Bit 7 can't be set
 		}
 		// Border color register
-		else if (address == 0x06cf) {
+        else if (address == GDG_IO_IN_ADDR_BCOL) {
 			gdg->bcol = GDG_Z80_GET_DATA(pins) & 0x0f; // Only the lower nibble can be set
 			_gdg_whid65040_032_update_border(gdg);
 		}
 		// Superimpose bit
-		else if (address == 0x07cf) {
+        else if (address == GDG_IO_IN_ADDR_CKSW) {
 			gdg->cksw = GDG_Z80_GET_DATA(pins) & 0x80; // Only bit 7 can be set
 		}
 		// Palette register
-		else if (low_address == 0x00f0) {
+        else if (low_address == GDG_IO_IN_ADDR_PAL) {
 			uint8_t value = GDG_Z80_GET_DATA(pins) & 0x7f; // Bit 7 can't be set
 
 			// Set plt_sw register

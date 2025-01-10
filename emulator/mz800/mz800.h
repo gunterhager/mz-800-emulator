@@ -221,7 +221,7 @@ void mz800_init(mz800_t* sys, mz800_desc_t* desc) {
 	z80pio_init(&sys->pio);
 	i8255_init(&sys->ppi);
 	gdg_whid65040_032_desc_t gdg_desc = (gdg_whid65040_032_desc_t) {
-		.ntpl = desc->ntpl
+		.ntpl = desc->ntpl,
 		.cgrom = sys->cgrom,
         .rgba8_buffer = (uint32_t *)sys->fb,
         .rgba8_buffer_size = MZ800_FRAMEBUFFER_SIZE_PIXEL
