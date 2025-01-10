@@ -46,6 +46,10 @@ typedef struct {
 // configuration parameters for mz800_init()
 typedef struct {
 	mz800_debug_t debug;
+    
+    // NTSC/PAL selection
+    // Set to false for PAL.
+    bool ntpl;
 
 	// audio output config (if you don't want audio, set callback.func to zero)
 	struct {
@@ -103,11 +107,13 @@ typedef struct {
 	i8255_t ppi;
 
 	// CTC i8253, programmable counter/timer
+    // TODO: Implement i8253
 
 	// PIO Z80 PIO, parallel I/O unit
 	z80pio_t pio;
 
 	// PSG SN 76489 AN, sound generator
+    // TODO: Impelemtn SN76489AN
 
 	// GDG WHID 65040-032, CRT controller
 	gdg_whid65040_032_t gdg;
@@ -215,7 +221,7 @@ void mz800_init(mz800_t* sys, mz800_desc_t* desc) {
 	z80pio_init(&sys->pio);
 	i8255_init(&sys->ppi);
 	gdg_whid65040_032_desc_t gdg_desc = (gdg_whid65040_032_desc_t) {
-		.ntpl = false, // PAL
+		.ntpl = desc->ntpl
 		.cgrom = sys->cgrom,
         .rgba8_buffer = (uint32_t *)sys->fb,
         .rgba8_buffer_size = MZ800_FRAMEBUFFER_SIZE_PIXEL
@@ -353,7 +359,7 @@ uint64_t mz800_update_memory_mapping(mz800_t* sys, uint64_t cpu_pins) {
 uint32_t mz800_exec(mz800_t* sys, uint32_t micro_seconds) {
 	CHIPS_ASSERT(sys && sys->valid);
 
-	const uint32_t num_ticks = clk_us_to_ticks(sys->gdg.cpu_clk0, micro_seconds);
+	const uint32_t num_ticks = clk_us_to_ticks(sys->gdg.cpu_clk, micro_seconds);
 	uint64_t pins = sys->pins;
 	if (0 == sys->debug.callback.func) {
 		// run without debug hook
@@ -389,7 +395,7 @@ static bool _mz800_is_VRAM_addr(mz800_t* sys, uint16_t addr) {
 
 #define _Z80_ADDR_MASK (0xffffULL)
 
-/// Translates memory mapped IO for MZ-700 mode to proper IO requests
+// Translates memory mapped IO for MZ-700 mode to proper IO requests
 static uint64_t _mz700_translate_iorq(mz800_t* sys, uint64_t cpu_pins) {
 	uint16_t io_addr = 0;
 

@@ -20,6 +20,7 @@ extern "C" {
 #define NOT_IMPLEMENTED false
 
 // MARK: - CRT
+// TODO: Implement CRT
 
 // CRT beam tracking
 typedef struct gdg_whid65040_032_crt_t {
@@ -39,108 +40,114 @@ typedef struct gdg_whid65040_032_crt_t {
 
 #define GDG_PALETTE_SIZE (4)
 
-/// Size of the VRAM buffer we use for easier emulation.
+// Size of the VRAM buffer we use for easier emulation.
 #define GDG_VRAM_BUFFER_SIZE (640 * 200)
 
-/// Size of the physical VRAM in the actual machine.
-#define GDG_VRAM_SIZE 0x4000
+// Size of the physical VRAM in the actual machine.
+#define GDG_VRAM_SIZE (0x4000)
+
+#define GDG_NTSC (true)
+#define GDG_PAL (false)
 
 typedef struct {
-	/// NTSC/PAL selection
-	/// Set to false for PAL.
+	// NTSC/PAL selection
+	// Set to false for PAL.
 	bool ntpl;
 
-	/// Character ROM
+	// Character ROM
 	uint8_t *cgrom;
 
-	/// pointer to the RGBA8 output framebuffer
+	// pointer to the RGBA8 output framebuffer
 	uint32_t* rgba8_buffer;
 	size_t rgba8_buffer_size;
 } gdg_whid65040_032_desc_t;
 
-/// GDG WHID 65040-032 state
+// GDG WHID 65040-032 state
 typedef struct {
-	/// NTSC/PAL selection
-	/// Set via jumper on the MZ-800 main board.
-	/// Set to false for PAL.
+	// NTSC/PAL selection
+	// Set via jumper on the MZ-800 main board.
+	// Set to false for PAL.
 	bool ntpl;
 
-	/// CPU clock
-	uint64_t cpu_clk0;
+    // Oscillator clock frequency
+    uint64_t clk0;
 
-	/// Write format register
-	/// Determines how pixel data is written to VRAM.
+    // CPU clock frequency
+    uint64_t cpu_clk;
+
+	// Write format register
+	// Determines how pixel data is written to VRAM.
 	uint8_t wf;
 
-	/// Read format register
-	/// Determines how pixel data is read from VRAM.
+	// Read format register
+	// Determines how pixel data is read from VRAM.
 	uint8_t rf;
 
-	/// Display mode register
-	/// Determines how the data in the VRAM is interpreted when decoding to RGB8 buffer.
+	// Display mode register
+	// Determines how the data in the VRAM is interpreted when decoding to RGB8 buffer.
 	uint8_t dmd;
 
-	/// Display status register
-	/// BLNK, SYNC, SW1 Mode switch, TEMPO
+	// Display status register
+	// BLNK, SYNC, SW1 Mode switch, TEMPO
 	uint8_t status;
 
-	/// Scroll Registers need to be set in increments of 0x5.
-	/// Scroll offsets have a range from 0x0 to 0x3e8, stored
-	///  as 10 bit number in two registers SOF1 and SOF2.
-	/// Scroll offset register 1
+	// Scroll Registers need to be set in increments of 0x5.
+	// Scroll offsets have a range from 0x0 to 0x3e8, stored
+	//  as 10 bit number in two registers SOF1 and SOF2.
+	// Scroll offset register 1
 	uint8_t sof1;
-	/// Scroll offset register 2
+	// Scroll offset register 2
 	uint8_t sof2;
-	/// Scroll width register (0x0 to 0x7d)
+	// Scroll width register (0x0 to 0x7d)
 	uint8_t sw;
-	/// Scroll start address register (0x0 to 0x78)
+	// Scroll start address register (0x0 to 0x78)
 	uint8_t ssa;
-	/// Scroll end address register (0x5 to 0x7d)
+	// Scroll end address register (0x5 to 0x7d)
 	uint8_t sea;
 
-	/// Border color register
+	// Border color register
 	uint8_t bcol;
-	/// RGBA8 version of the border color.
+	// RGBA8 version of the border color.
 	uint32_t bcol_rgba8;
 
-	/// Superimpose bit
-	/// 0: 50Hz, 1: 60Hz
+	// Superimpose bit
+	// 0: 50Hz, 1: 60Hz
 	uint8_t cksw;
 
-	/// Palette registers
+	// Palette registers
 	uint8_t plt[GDG_PALETTE_SIZE];
-	/// RGBA8 version of the palette. Used only for debug rendering.
+	// RGBA8 version of the palette. Used only for debug rendering.
 	uint32_t plt_rgba8[GDG_PALETTE_SIZE];
-	/// Palette switch register (for 16 color mode)
+	// Palette switch register (for 16 color mode)
 	uint8_t plt_sw;
 
-	/// VRAM
-	/// In MZ-700 mode: Starting at 0x0000 each byte corresponds to a character (40x25).
-	/// Starting at 0x0800 each byte corresponds to a color code that controls the color
-	/// for each character and its background. Bit 7 controls if the alternative character set
-	/// should be used for that character.
-	/// In MZ-800 Mode: one byte for each pixel, we need only 4 bit per pixel.
-	/// Each bit corresponds to a pixel on planes I, II, III, IV.
+	// VRAM
+	// In MZ-700 mode: Starting at 0x0000 each byte corresponds to a character (40x25).
+	// Starting at 0x0800 each byte corresponds to a color code that controls the color
+	// for each character and its background. Bit 7 controls if the alternative character set
+	// should be used for that character.
+	// In MZ-800 Mode: one byte for each pixel, we need only 4 bit per pixel.
+	// Each bit corresponds to a pixel on planes I, II, III, IV.
 	uint8_t vram[GDG_VRAM_BUFFER_SIZE];
 
-	/// CGROM contains bitmapped character shapes.
+	// CGROM contains bitmapped character shapes.
 	uint8_t *cgrom;
 
-	/// RGBA8 buffer for displaying color graphics on screen.
+	// RGBA8 buffer for displaying color graphics on screen.
 	uint32_t *rgba8_buffer;
 	size_t rgba8_buffer_size;
 
 	// Private status properties
 
-	/// Mask that indicates which planes to write to.
+	// Mask that indicates which planes to write to.
 	uint8_t write_planes;
-	/// Mask that indicates which planes to reset.
+	// Mask that indicates which planes to reset.
 	uint8_t reset_planes;
 
-	/// Mask that indicates which planes to read from.
+	// Mask that indicates which planes to read from.
 	uint8_t read_planes;
 
-	/// Indicates if machine is in MZ-700 mode. This is actually toggled by setting the DMD register.
+	// Indicates if machine is in MZ-700 mode. This is actually toggled by setting the DMD register.
 	bool is_mz700;
 
 	uint64_t pins;
@@ -164,18 +171,26 @@ typedef struct {
  */
 
 /* control pins shared directly with Z80 CPU */
-#define  GDG_M1    (1ULL<<24)       /* machine cycle 1 */
-#define  GDG_IORQ  (1ULL<<26)       /* input/output request */
-#define  GDG_RD    (1ULL<<27)       /* read */
-#define  GDG_WR    (1ULL<<28)       /* write */
-#define  GDG_INT   (1ULL<<30)       /* interrupt request */
-#define  GDG_RESET (1ULL<<31)       /* put GDG into reset state (same as Z80 reset) */
+#define  GDG_PIN_M1    (24)       /* machine cycle 1 */
+#define  GDG_PIN_IORQ  (26)       /* input/output request */
+#define  GDG_PIN_RD    (27)       /* read */
+#define  GDG_PIN_WR    (28)       /* write */
+#define  GDG_PIN_INT   (30)       /* interrupt request */
+#define  GDG_PIN_RESET (31)       /* put GDG into reset state (same as Z80 reset) */
+
+#define  GDG_M1    (1ULL<<GDG_PIN_M1)       /* machine cycle 1 */
+#define  GDG_IORQ  (1ULL<<GDG_PIN_IORQ)     /* input/output request */
+#define  GDG_RD    (1ULL<<GDG_PIN_RD)       /* read */
+#define  GDG_WR    (1ULL<<GDG_PIN_WR)       /* write */
+#define  GDG_INT   (1ULL<<GDG_PIN_INT)      /* interrupt request */
+#define  GDG_RESET (1ULL<<GDG_PIN_RESET)    /* put GDG into reset state (same as Z80 reset) */
 
 
-/* extract 8-bit data bus from 64-bit pins */
-#define GDG_GET_DATA(p) ((uint8_t)(p>>16))
-/* merge 8-bit data bus value into 64-bit pins */
-#define GDG_SET_DATA(p,d) {p=((p&~0xFF0000)|((d&0xFF)<<16));}
+#define GDG_Z80_GET_ADDR(p) ((uint16_t)(p))
+#define GDG_Z80_SET_ADDR(p,a) {p=((p)&~0xFFFF)|((a)&0xFFFF);}
+#define GDG_Z80_GET_DATA(p) ((uint8_t)((p)>>16))
+#define GDG_Z80_SET_DATA(p,d) {p=((p)&~0xFF0000ULL)|(((d)<<16)&0xFF0000ULL);}
+
 
 // MARK: - GDG DMD
 
@@ -233,9 +248,9 @@ void gdg_whid65040_032_decode_vram_mz700(gdg_whid65040_032_t* gdg, uint16_t addr
 #define CI(i) ((i) ? CI1 : CI0)
 #define COLOR_IGRB_TO_ABGR(i, g, r, b) (0xff000000 | (((b) * CI(i)) << 16) | (((g) * CI(i)) << 8) | ((r) * CI(i)))
 
-/// Colors - the MZ-800 has 16 fixed colors.
-/// Color codes on the MZ-800 are IGRB (Intensity, Green, Red, Blue).
-/// NOTE: the colors are encoded in ABGR.
+// Colors - the MZ-800 has 16 fixed colors.
+// Color codes on the MZ-800 are IGRB (Intensity, Green, Red, Blue).
+// NOTE: the colors are encoded in ABGR.
 const uint32_t mz800_colors[16] = {
 	// Intensity low
 	COLOR_IGRB_TO_ABGR(0, 0, 0, 0), // 0000 black
@@ -323,9 +338,10 @@ uint64_t gdg_whid65040_032_tick(gdg_whid65040_032_t *gdg, uint64_t pins) {
 
 // MARK: - Frequencies
 
-/// Setup frequencies based on NTPL pin
+// Setup frequencies based on NTPL pin
 static void _gdg_whid65040_032_setup_freq(gdg_whid65040_032_t* gdg) {
-	gdg->cpu_clk0 = gdg->ntpl ? GDG_CPU_CLK_NTSC: GDG_CPU_CLK_PAL;
+    gdg->clk0 = gdg->ntpl ? GDG_CLK0_NTSC: GDG_CLK0_PAL;
+	gdg->cpu_clk = gdg->ntpl ? GDG_CPU_CLK_NTSC: GDG_CPU_CLK_PAL;
 }
 
 // MARK: - IO request
@@ -340,14 +356,14 @@ static uint64_t _gdg_whid65040_032_iorq(gdg_whid65040_032_t* gdg, uint64_t pins)
 		return outpins;
 	}
 
-	uint16_t address = Z80_GET_ADDR(pins);
+	uint16_t address = GDG_Z80_GET_ADDR(pins);
 	uint16_t low_address = address & 0x00ff;
 
 	// Read
 	if (pins & GDG_RD) {
 		// Display status register
 		if (low_address == 0x00ce) {
-			Z80_SET_DATA(outpins, gdg->status);
+			GDG_Z80_SET_DATA(outpins, gdg->status);
 		}
 		// DEBUG
 		else {
@@ -359,50 +375,50 @@ static uint64_t _gdg_whid65040_032_iorq(gdg_whid65040_032_t* gdg, uint64_t pins)
 	else if (pins & GDG_WR) {
 		// Write format register
 		if (low_address == 0x00cc) {
-			uint8_t value = Z80_GET_DATA(pins);
+			uint8_t value = GDG_Z80_GET_DATA(pins);
 			gdg_whid65040_032_set_wf(gdg, value);
 		}
 		// Read format register
 		else if (low_address == 0x00cd) {
-			gdg->rf = Z80_GET_DATA(pins) & 0x9f; // Bits 5, 6 can't be set
+			gdg->rf = GDG_Z80_GET_DATA(pins) & 0x9f; // Bits 5, 6 can't be set
 		}
 		// Display mode register
 		else if (low_address == 0x00ce) {
-			uint8_t value = Z80_GET_DATA(pins) & 0x0f; // Only the lower nibble can be set
+			uint8_t value = GDG_Z80_GET_DATA(pins) & 0x0f; // Only the lower nibble can be set
 			gdg_whid65040_032_set_dmd(gdg, value);
 		}
 		// Scroll offset register 1
 		else if (address == 0x01cf) {
-			gdg->sof1 = Z80_GET_DATA(pins);
+			gdg->sof1 = GDG_Z80_GET_DATA(pins);
 		}
 		// Scroll offset register 2
 		else if (address == 0x02cf) {
-			gdg->sof2 = Z80_GET_DATA(pins) & 0x03; // Only bits 0, 1 can be set
+			gdg->sof2 = GDG_Z80_GET_DATA(pins) & 0x03; // Only bits 0, 1 can be set
 		}
 		// Scroll width register
 		else if (address == 0x03cf) {
-			gdg->sw = Z80_GET_DATA(pins) & 0x7f; // Bit 7 can't be set
+			gdg->sw = GDG_Z80_GET_DATA(pins) & 0x7f; // Bit 7 can't be set
 		}
 		// Scroll start address register
 		else if (address == 0x04cf) {
-			gdg->ssa = Z80_GET_DATA(pins) & 0x7f; // Bit 7 can't be set
+			gdg->ssa = GDG_Z80_GET_DATA(pins) & 0x7f; // Bit 7 can't be set
 		}
 		// Scroll end address register
 		else if (address == 0x05cf) {
-			gdg->sea = Z80_GET_DATA(pins) & 0x7f; // Bit 7 can't be set
+			gdg->sea = GDG_Z80_GET_DATA(pins) & 0x7f; // Bit 7 can't be set
 		}
 		// Border color register
 		else if (address == 0x06cf) {
-			gdg->bcol = Z80_GET_DATA(pins) & 0x0f; // Only the lower nibble can be set
+			gdg->bcol = GDG_Z80_GET_DATA(pins) & 0x0f; // Only the lower nibble can be set
 			_gdg_whid65040_032_update_border(gdg);
 		}
 		// Superimpose bit
 		else if (address == 0x07cf) {
-			gdg->cksw = Z80_GET_DATA(pins) & 0x80; // Only bit 7 can be set
+			gdg->cksw = GDG_Z80_GET_DATA(pins) & 0x80; // Only bit 7 can be set
 		}
 		// Palette register
 		else if (low_address == 0x00f0) {
-			uint8_t value = Z80_GET_DATA(pins) & 0x7f; // Bit 7 can't be set
+			uint8_t value = GDG_Z80_GET_DATA(pins) & 0x7f; // Bit 7 can't be set
 
 			// Set plt_sw register
 			if (value & 0x80) { // Bit 7 set, so we set plt_sw register
@@ -434,16 +450,20 @@ void _gdg_whid65040_032_update_border(gdg_whid65040_032_t* gdg) {
 	uint32_t mz_color = mz800_colors[gdg->bcol];
 	gdg->bcol_rgba8 = mz_color;
 	// Convert ABGR color into sg_color
-	sg_color color = (sg_color) {
-		.r = (float)(0xff & mz_color),
-		.g = (float)(0xff & (mz_color >> 8)),
-		.b = (float)(0xff & (mz_color >> 16))
-	};
+	// sg_color color = (sg_color) {
+	// 	.r = (float)(0xff & mz_color),
+	// 	.g = (float)(0xff & (mz_color >> 8)),
+	// 	.b = (float)(0xff & (mz_color >> 16))
+	// };
 #warning TODO: Implement border color
 	// gfx_set_border(color);
 }
 
 // MARK: - VRAM
+
+uint8_t *gdg_plane_ptr(gdg_whid65040_032_t* gdg, uint16_t addr) {
+    return gdg->vram + addr * 8;
+}
 
 /**
  Read a byte from VRAM. The meaning of the bits in the byte depend on
@@ -488,7 +508,7 @@ void gdg_whid65040_032_mem_wr(gdg_whid65040_032_t* gdg, uint16_t addr, uint8_t d
 		gdg->vram[addr] = data;
 	} else {
 		uint8_t write_mode = gdg->wf >> 5;
-		uint8_t *plane_ptr = gdg->vram + addr * 8;
+        uint8_t *plane_ptr = gdg_plane_ptr(gdg, addr);
 
 		// Write into VRAM
 		for (uint8_t bit = 0; bit < 8; bit++, plane_ptr++, data >>= 1) {
@@ -551,6 +571,8 @@ void gdg_whid65040_032_mem_wr(gdg_whid65040_032_t* gdg, uint16_t addr, uint8_t d
 void gdg_whid65040_032_set_wf(gdg_whid65040_032_t* gdg, uint8_t value) {
 	CHIPS_ASSERT(gdg);
 	gdg->wf = value;
+    uint8_t frame_select = value & 0x10;
+    gdg->rf |= frame_select; // frame select is shared between wf and rf
 
 	// MZ-700 mode
 	if (value == 0x01) {
@@ -575,9 +597,10 @@ void gdg_whid65040_032_set_wf(gdg_whid65040_032_t* gdg, uint8_t value) {
 				if (use_frame_b) {
 					gdg->write_planes &= 0x04; // Plane III
 					gdg->reset_planes = ~0x04;
-				} else {
-					gdg->write_planes &= 0x01; // Plane I
-					gdg->reset_planes = ~0x01;                    }
+                } else {
+                    gdg->write_planes &= 0x01; // Plane I
+                    gdg->reset_planes = ~0x01;
+                }
 			} else { // 320x200 mode
 				if (use_frame_b) {
 					gdg->write_planes &= 0x0c; // Planes III, IV
@@ -604,7 +627,10 @@ void gdg_whid65040_032_set_wf(gdg_whid65040_032_t* gdg, uint8_t value) {
 void gdg_whid65040_032_set_rf(gdg_whid65040_032_t* gdg, uint8_t value) {
 	CHIPS_ASSERT(gdg);
 	gdg->rf = value;
-	bool use_frame_b = value & 0x10;
+    uint8_t frame_select = value & 0x10;
+    gdg->wf |= frame_select; // frame select is shared between wf and rf
+
+    bool use_frame_b = value & 0x10;
 
 	// Set read planes mask here
 #warning TODO: set_rf: Implement setting read planes mask
@@ -722,7 +748,7 @@ void gdg_whid65040_032_decode_vram_mz700(gdg_whid65040_032_t* gdg, uint16_t addr
 void gdg_whid65040_032_decode_vram_mz800(gdg_whid65040_032_t* gdg, uint16_t addr) {
 	CHIPS_ASSERT(gdg);
 	// Setup
-	uint8_t *plane_ptr = gdg->vram + addr * 8;
+	uint8_t *plane_ptr = gdg_plane_ptr(gdg, addr);
 	bool hires = gdg->dmd & 0x04; // 640x200 if set
 	uint32_t index = addr * 8 * (hires ? 1 : 2); // Pixel index in rgba8_buffer, in lores we write 2 pixels for each lores pixel
 

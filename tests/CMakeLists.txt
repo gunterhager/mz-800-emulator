@@ -18,6 +18,7 @@ fips_begin_app(chips-test cmdline)
         m6502dasm-test.c
         z80dasm-test.c
         m6502-test.c
+        gdg_whid65040_032-test.c
     )
     fips_dir(disks)
     fipsutil_embed(fdd-test.yml fdd-test.h)

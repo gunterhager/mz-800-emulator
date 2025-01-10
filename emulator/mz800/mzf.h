@@ -13,14 +13,14 @@
 #include "chips/z80.h"
 #include "mz800.h"
 
-/// File attribute for CMT (cassette tapes)
+// File attribute for CMT (cassette tapes)
 enum mzf_attribute {
     mzf_obj = 0x01, // machine code program
     mzf_btx = 0x05, // BASIC program
     mzf_txt = 0x94  // text file
 };
 
-/// MZF file header format
+// MZF file header format
 typedef struct {
     uint8_t attribute; // MZF attribute
     uint8_t name[17]; // name in MZ-ASCII, terminated with 0x0d ('\r')
