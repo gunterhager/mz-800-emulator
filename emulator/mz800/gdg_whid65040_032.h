@@ -20,7 +20,7 @@ extern "C" {
 #define NOT_IMPLEMENTED false
 
 // MARK: - CRT
-// TODO: Implement CRT
+#warning TODO: Implement CRT
 
 // CRT beam tracking
 typedef struct gdg_whid65040_032_crt_t {

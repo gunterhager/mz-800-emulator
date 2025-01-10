@@ -107,13 +107,13 @@ typedef struct {
 	i8255_t ppi;
 
 	// CTC i8253, programmable counter/timer
-    // TODO: Implement i8253
+#warning TODO: Implement i8253
 
 	// PIO Z80 PIO, parallel I/O unit
 	z80pio_t pio;
 
 	// PSG SN 76489 AN, sound generator
-    // TODO: Impelemtn SN76489AN
+#warning TODO: Impelemtn SN76489AN
 
 	// GDG WHID 65040-032, CRT controller
 	gdg_whid65040_032_t gdg;
@@ -417,6 +417,7 @@ static uint64_t _mz700_translate_iorq(mz800_t* sys, uint64_t cpu_pins) {
 		case (MZ700_IO_START + 0x07 | Z80_WR): io_addr = 0xd7; break; // W
 
 			// Implementation of MZ-700 0xe008 is a bit unclear
+#warning TODO: clarify MZ-700 write to 0xe008 (mem mapped IO)
 //		case (MZ700_IO_START + 0x08 | Z80_WR): io_addr = 0xd7; break; // R/W
 		case (MZ700_IO_START + 0x08 | Z80_RD): io_addr = 0xce; break;
 
@@ -445,7 +446,7 @@ static uint64_t mz800_cpu_tick(mz800_t* sys, uint64_t cpu_pins) {
 		}
 	}
 
-	// TODO: interrupt acknowledge
+#warning TODO: interrupt acknowledge
 
 	// Memory request
 	if (cpu_pins & Z80_MREQ) {
@@ -499,7 +500,7 @@ static uint64_t mz800_cpu_iorq(mz800_t* sys, uint64_t cpu_pins) {
 
 	// Serial I/O
 	if (IN_RANGE(address, 0xb0, 0xb3)) {
-		// TODO: not implemented
+#warning TODO: implement serial IO
 		CHIPS_ASSERT(NOT_IMPLEMENTED);
 	}
 	// GDG WHID 65040-032, CRT controller
@@ -518,12 +519,12 @@ static uint64_t mz800_cpu_iorq(mz800_t* sys, uint64_t cpu_pins) {
 	}
 	// CTC i8253, programmable counter/timer
 	else if (IN_RANGE(address, 0xd4, 0xd7)) {
-		// TODO: not implemented
+#warning TODO: implement i8253
 		CHIPS_ASSERT(NOT_IMPLEMENTED);
 	}
 	// FDC, floppy disc controller
 	else if (IN_RANGE(address, 0xd8, 0xdf)) {
-		// TODO: not implemented
+#warning TODO: implement FDC
 		CHIPS_ASSERT(NOT_IMPLEMENTED);
 	}
 	// GDG WHID 65040-032, Memory bank switch
@@ -534,7 +535,7 @@ static uint64_t mz800_cpu_iorq(mz800_t* sys, uint64_t cpu_pins) {
 	}
 	// Joystick (read only)
 	else if ((cpu_pins & Z80_RD) && (IN_RANGE(address, 0xf0, 0xf1))) {
-		// TODO: not implemented
+#warning TODO: implement joystick
 		CHIPS_ASSERT(NOT_IMPLEMENTED);
 	}
 	// GDG WHID 65040-032, Palette register (write only)
@@ -543,12 +544,12 @@ static uint64_t mz800_cpu_iorq(mz800_t* sys, uint64_t cpu_pins) {
 	}
 	// PSG SN 76489 AN, sound generator
 	else if (address == 0xf2) {
-		// TODO: not implemented
+#warning TODO: implement PSG
 		CHIPS_ASSERT(NOT_IMPLEMENTED);
 	}
 	// QDC, quick disk controller
 	else if (IN_RANGE(address, 0xf4, 0xf7)) {
-		// TODO: not implemented
+#warning TODO: implement QDC
 		CHIPS_ASSERT(NOT_IMPLEMENTED);
 	}
 	// PIO Z80 PIO, parallel I/O unit
