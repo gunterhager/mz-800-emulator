@@ -201,7 +201,10 @@ typedef struct {
 
 // MARK: - GDG DMD
 
-#define GDG_DMD_640 (1<<2)
+#define GDG_DMD_HIRES (1<<2)
+#define GDG_DMD_HICOLOR (1<<1)
+#define GDG_DMD_FRAME_B (1)
+#define GDG_DMD_MZ700 (1<<3)
 
 // MARK: - Functions
 
@@ -524,8 +527,8 @@ uint8_t gdg_whid65040_032_mem_rd(gdg_whid65040_032_t* gdg, uint16_t addr) {
         bool planeIII = gdg->rf & (1<<2);
         bool planeIV = gdg->rf & (1<<3);
         
-        bool hires = gdg->dmd & (1<<2); // 640x200 if set
-        bool hicolor = gdg->dmd & (1<<1); // 16 colors for lores, 4 colors for hires
+        bool hires = gdg->dmd & GDG_DMD_HIRES; // 640x200 if set
+        bool hicolor = gdg->dmd & GDG_DMD_HICOLOR; // 16 colors for lores, 4 colors for hires
 
         // Plane data
         uint8_t planeI_data;
@@ -651,8 +654,8 @@ void gdg_whid65040_032_mem_wr(gdg_whid65040_032_t* gdg, uint16_t addr, uint8_t d
         bool planeIII = gdg->wf & (1<<2);
         bool planeIV = gdg->wf & (1<<3);
         
-        bool hires = gdg->dmd & (1<<2); // 640x200 if set
-        bool hicolor = gdg->dmd & (1<<1); // 16 colors for lores, 4 colors for hires
+        bool hires = gdg->dmd & GDG_DMD_HIRES; // 640x200 if set
+        bool hicolor = gdg->dmd & GDG_DMD_HICOLOR; // 16 colors for lores, 4 colors for hires
         
         // VRAM address check
         if (addr >= (hires ? 0x3E80 : 0x1F40)) { return; }
@@ -836,7 +839,7 @@ void gdg_whid65040_032_decode_vram_mz700(gdg_whid65040_032_t* gdg, uint16_t addr
 void gdg_whid65040_032_decode_vram_mz800(gdg_whid65040_032_t* gdg, uint16_t addr) {
 	CHIPS_ASSERT(gdg);
 
-    bool hires = gdg->dmd & (1<<2); // 640x200 if set
+    bool hires = gdg->dmd & GDG_DMD_HIRES; // 640x200 if set
 	uint32_t index = addr * 8 * (hires ? 1 : 2); // Pixel index in rgba8_buffer, in lores we write 2 pixels for each lores pixel
     
     // VRAM address check
