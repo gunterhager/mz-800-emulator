@@ -50,6 +50,10 @@ typedef struct {
     // NTSC/PAL selection
     // Set to false for PAL.
     bool ntpl;
+    
+    // VRAM extension
+    // VRAM is 32K if installed, 16K otherwise
+    bool is_VRAM_extension_installed;
 
 	// audio output config (if you don't want audio, set callback.func to zero)
 	struct {
@@ -222,6 +226,7 @@ void mz800_init(mz800_t* sys, mz800_desc_t* desc) {
 	i8255_init(&sys->ppi);
 	gdg_whid65040_032_desc_t gdg_desc = (gdg_whid65040_032_desc_t) {
 		.ntpl = desc->ntpl,
+        .is_VRAM_extension_installed = desc->is_VRAM_extension_installed,
 		.cgrom = sys->cgrom,
         .rgba8_buffer = (uint32_t *)sys->fb,
         .rgba8_buffer_size = MZ800_FRAMEBUFFER_SIZE_PIXEL

@@ -80,6 +80,7 @@ static void push_audio(const float* samples, int num_samples, void* user_data) {
 mz800_desc_t mz800_desc() {
 	return (mz800_desc_t) {
         .ntpl = GDG_PAL,
+        .is_VRAM_extension_installed = true,
 		.audio = {
 			.callback = { .func = push_audio },
 			.sample_rate = saudio_sample_rate(),

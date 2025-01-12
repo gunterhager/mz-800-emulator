@@ -20,7 +20,8 @@ static uint32_t framebuffer[MZ800_FRAMEBUFFER_SIZE_PIXEL];
 
 gdg_whid65040_032_desc_t gdg_whid65040_032_desc() {
     return (gdg_whid65040_032_desc_t) {
-        .ntpl = 0,
+        .ntpl = false,
+        .is_VRAM_extension_installed = false,
         .cgrom = dump_mz800_cgrom_bin,
         .rgba8_buffer = framebuffer,
         .rgba8_buffer_size = sizeof(framebuffer),
@@ -35,4 +36,29 @@ UTEST(gdg_whid65040_032, init) {
     T(sys.cgrom == desc.cgrom);
     T(sys.rgba8_buffer == desc.rgba8_buffer);
     T(sys.rgba8_buffer_size == desc.rgba8_buffer_size);
+    T(!sys.is_mz700);
+    T(sys.status & 0x02);
+}
+
+UTEST(gdg_whid65040_032, set_MZ800_mode) {
+    gdg_whid65040_032_t sys;
+    gdg_whid65040_032_desc_t desc = gdg_whid65040_032_desc();
+    gdg_whid65040_032_init(&sys, &desc);
+    
+    // Set MZ-800 mode
+    gdg_whid65040_032_set_dmd(&sys, 0x00);
+    T(sys.status & 0x02);
+}
+
+UTEST(gdg_whid65040_032, set_MZ700_mode) {
+    gdg_whid65040_032_t sys;
+    gdg_whid65040_032_desc_t desc = gdg_whid65040_032_desc();
+    gdg_whid65040_032_init(&sys, &desc);
+    
+    // Set MZ-800 mode
+    gdg_whid65040_032_set_dmd(&sys, 0x00);
+    T(sys.status & 0x02);
+    // Set MZ-700 mode
+    gdg_whid65040_032_set_dmd(&sys, 0x08);
+    T(!(sys.status & 0x02));
 }

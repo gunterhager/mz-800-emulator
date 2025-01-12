@@ -192,9 +192,9 @@ static const ui_chip_pin_t _ui_mz800_gdg_pins[] = {
 };
 // MARK: - Memory
 
-#define _UI_MZ800_MEMLAYER_NUM (6)
+#define _UI_MZ800_MEMLAYER_NUM (7)
 static const char* _ui_mz800_memlayer_names[_UI_MZ800_MEMLAYER_NUM] = {
-	"CPU visible", "ROM 1", "CG ROM", "ROM 2", "RAM", "VRAM"
+	"CPU visible", "ROM 1", "CG ROM", "ROM 2", "RAM", "VRAM1", "VRAM2"
 };
 
 static uint8_t _ui_mz800_rom_read(uint8_t* rom, uint16_t start_addr, uint16_t size, uint16_t addr) {
@@ -228,13 +228,21 @@ static uint8_t _ui_mz800_mem_read(int layer, uint16_t addr, void* user_data) {
 		case 4: // RAM
 			return mz800->dram[addr];
 
-		case 5: // VRAM
-			if (addr < MZ800_VRAM_640_SIZE) {
-				return mz800->gdg.vram[addr];
+		case 5: // VRAM1
+			if (addr < GDG_VRAM_SIZE) {
+				return mz800->gdg.vram1[addr];
 			}
 			else {
 				return 0xff;
 			}
+
+        case 6: // VRAM2
+            if (addr < GDG_VRAM_SIZE) {
+                return mz800->gdg.vram2[addr];
+            }
+            else {
+                return 0xff;
+            }
 
 		default:
 			return 0xff;
@@ -263,14 +271,11 @@ static void _ui_mz800_mem_write(int layer, uint16_t addr, uint8_t data, void* us
 			mz800->dram[addr] = data;
 			break;
 
-		case 5: // VRAM
-			if (addr < MZ800_VRAM_640_SIZE) {
-				mz800->gdg.vram[addr] = data;
-				// Since we circumvent the regular VRAM write
-				// we need to decode VRAM into RGB8 buffer
-				gdg_whid65040_032_decode_vram(&mz800->gdg, addr);
-			}
+		case 5: // VRAM1
 			break;
+
+        case 6: // VRAM1
+            break;
 
 		default:
 			break;
