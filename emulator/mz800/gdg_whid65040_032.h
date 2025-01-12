@@ -490,11 +490,6 @@ void _gdg_whid65040_032_update_border(gdg_whid65040_032_t* gdg) {
 
 // MARK: - VRAM
 
-uint8_t *gdg_plane_ptr(gdg_whid65040_032_t* gdg, uint16_t addr) {
-#warning TODO: this calculation is obsolete
-    return gdg->vram1 + addr * 8;
-}
-
 uint16_t gdg_hires_vram_addr(uint16_t addr) {
     CHIPS_ASSERT(addr < 0x3E80);
     // In hires VRAM addresses are spread over two planes.
@@ -503,6 +498,8 @@ uint16_t gdg_hires_vram_addr(uint16_t addr) {
     // plane offset depending on the parity.
     return (addr >> 1) + (addr & 0x1 ? 0x2000 : 0x0000);
 }
+
+#define GDG_ILLEGAL_READ (0xff)
 
 /**
  Read a byte from VRAM. The meaning of the bits in the byte depend on
@@ -516,18 +513,68 @@ uint8_t gdg_whid65040_032_mem_rd(gdg_whid65040_032_t* gdg, uint16_t addr) {
 	CHIPS_ASSERT(gdg);
 
 	if (gdg->is_mz700 && (gdg->rf == 0x01)) {
+        if (addr >= 0x1F40) { return GDG_ILLEGAL_READ; }
 		return gdg->vram1[addr];
 	} else {
-		return 0;
-#warning TODO: mem_rd: Implement
+        // Read flags
+        bool is_searching = gdg->rf & (1 << 7);
+        bool frameB = gdg->rf & (1<<4);
+        bool planeI = gdg->rf & (1);
+        bool planeII = gdg->rf & (1<<1);
+        bool planeIII = gdg->rf & (1<<2);
+        bool planeIV = gdg->rf & (1<<3);
+        
+        bool hires = gdg->dmd & (1<<2); // 640x200 if set
+        bool hicolor = gdg->dmd & (1<<1); // 16 colors for lores, 4 colors for hires
 
-		uint8_t plane_select = gdg->rf & 0x0f;
-		bool is_searching = gdg->rf & (1 << 7);
-		if (is_searching) {
+        // Plane data
+        uint8_t planeI_data;
+        uint8_t planeII_data;
+        uint8_t planeIII_data;
+        uint8_t planeIV_data;
+        if (hires) {
+            planeI_data = gdg->vram1[gdg_hires_vram_addr(addr)];
+            planeII_data = GDG_ILLEGAL_READ;
+            planeIII_data = gdg->vram2[gdg_hires_vram_addr(addr)];
+            planeIV_data = GDG_ILLEGAL_READ;
+        } else {
+            planeI_data = gdg->vram1[addr];
+            planeII_data = gdg->vram1[addr + GDG_VRAM_PLANE_OFFSET];
+            planeIII_data = gdg->vram2[addr];
+            planeIV_data = gdg->vram2[addr + GDG_VRAM_PLANE_OFFSET];
+        }
 
-		} else {
-
-		}
+        if (is_searching) {
+            if (hires) {
+                if (hicolor) {
+                    return (planeI ? planeI_data : ~planeI_data)
+                    | (planeIII ? planeIII_data : ~planeIII_data);
+                } else {
+                    return planeI ? planeI_data : ~planeI_data;
+                }
+            } else {
+                if (hicolor) {
+                    return (planeI ? planeI_data : ~planeI_data)
+                    | (planeII ? planeII_data : ~planeII_data)
+                    | (planeIII ? planeIII_data : ~planeIII_data)
+                    | (planeIV ? planeIV_data : ~planeIV_data);
+                } else {
+                    if (frameB) {
+                        return (planeIII ? planeIII_data : ~planeIII_data)
+                        | (planeIV ? planeIV_data : ~planeIV_data);
+                    } else {
+                        return (planeI ? planeI_data : ~planeI_data)
+                        | (planeII ? planeII_data : ~planeII_data);
+                    }
+                }
+            }
+        } else {
+            if (planeI) { return planeI_data; }
+            if (planeII) { return planeII_data; }
+            if (planeIII) { return planeIII_data; }
+            if (planeIV) { return planeIV_data; }
+            return GDG_ILLEGAL_READ;
+        }
 	}
 }
 
