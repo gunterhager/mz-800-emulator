@@ -71,8 +71,7 @@ UTEST(gdg_whid65040_032, MEM_WR_SINGLE_WRITE) {
     // Set MZ-800 mode, 320x200, 16 colors
     gdg_whid65040_032_set_dmd(&sys, GDG_DMD_HICOLOR);
     
-    // Pixels: black / black / yellow / yellow / magenta / magenta / cyan /cyan
-    uint8_t plane_data[] = {0x0f, 0x33, 0x3C, 0x00};
+    uint8_t plane_data[] = {0x0f, 0x33, 0x3C, 0x80};
     for (uint8_t bit = 0; bit < 4; bit++) {
         gdg_whid65040_032_set_wf(&sys, (1 << bit));
         gdg_whid65040_032_mem_wr(&sys, 0x0000, plane_data[bit]);
@@ -108,3 +107,29 @@ UTEST(gdg_whid65040_032, MEM_WR_REPLACE) {
     T(sys.vram2[GDG_VRAM_PLANE_OFFSET] == 0x55);    // plane IV
 
 }
+
+UTEST(gdg_whid65040_032, MEM_WR_PSET) {
+    gdg_whid65040_032_t sys;
+    gdg_whid65040_032_desc_t desc = gdg_whid65040_032_desc();
+    gdg_whid65040_032_init(&sys, &desc);
+    
+    // Set MZ-800 mode, 320x200, 16 colors
+    gdg_whid65040_032_set_dmd(&sys, GDG_DMD_HICOLOR);
+    
+    // Pixels: black / black / yellow / yellow / magenta / magenta / cyan /cyan
+    uint8_t plane_data[] = {0x0f, 0x33, 0x3C, 0x00};
+    sys.vram1[0] = plane_data[0];                       // plane I
+    sys.vram1[GDG_VRAM_PLANE_OFFSET] = plane_data[1];   // plane II
+    sys.vram2[0] = plane_data[2];                       // plane III
+    sys.vram2[GDG_VRAM_PLANE_OFFSET] = plane_data[3];   // plane IV
+    
+    // Replace with: black / light yellow / black / light yellow / black / light yellow / black / light yellow
+    gdg_whid65040_032_set_wf(&sys, (1 << 7) | (1 << 6) | (1 << 3) | (1 << 2) | (1 << 1));
+    gdg_whid65040_032_mem_wr(&sys, 0x0000, 0x55);
+    
+    T(sys.vram1[0] == 0x0A);                        // plane I
+    T(sys.vram1[GDG_VRAM_PLANE_OFFSET] == 0x77);    // plane II
+    T(sys.vram2[0] == 0x7D);                        // plane III
+    T(sys.vram2[GDG_VRAM_PLANE_OFFSET] == 0x55);    // plane IV
+}
+
