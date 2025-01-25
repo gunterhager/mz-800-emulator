@@ -133,3 +133,4 @@ UTEST(gdg_whid65040_032, MEM_WR_PSET) {
     T(sys.vram2[GDG_VRAM_PLANE_OFFSET] == 0x55);    // plane IV
 }
 
+#warning TODO: implement VRAM read tests

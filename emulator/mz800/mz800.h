@@ -117,7 +117,7 @@ typedef struct {
 	z80pio_t pio;
 
 	// PSG SN 76489 AN, sound generator
-#warning TODO: Impelemtn SN76489AN
+#warning TODO: Implement SN76489AN
 
 	// GDG WHID 65040-032, CRT controller
 	gdg_whid65040_032_t gdg;
