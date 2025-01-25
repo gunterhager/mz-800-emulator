@@ -1,10 +1,10 @@
-![MZ-800](misc/cgrom_dump.png)
-
-# mz-800-emulator
-
 **ATTENTION:** This project is being sunset and will no longer be maintained. The MZ-800 emulator project is being moved over to:
 https://github.com/gunterhager/mz800-emuz
 The new project is using the zig language which is IMHO a much better choice than C for implementing emulators.
+
+![MZ-800](misc/cgrom_dump.png)
+
+# mz-800-emulator
 
 SHARP MZ-800 Emulator using Andre Weissflog's https://github.com/floooh/chips emulator infrastructure.
 
